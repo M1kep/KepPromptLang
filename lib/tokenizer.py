@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Union, TypedDict, Optional, Literal
+from typing import Union, Optional
 
-from comfy.sd1_clip import SD1Tokenizer, escape_important, unescape_important, parse_parentheses
+from comfy.sd1_clip import SD1Tokenizer, parse_parentheses
 
 
 def token_weights(string, current_weight):
@@ -48,28 +48,6 @@ def parse_special_tokens(string):
             current += char
     out += [current]
     return out
-
-# class TokenActions:
-#     def __init__(self, is_nudge=None, is_arith=None, nudge_weight=None, base_segment=None):
-#         if is_nudge is None:
-#             self.is_nudge = False
-#         else:
-#             self.is_nudge = is_nudge
-#
-#         if is_arith is None:
-#             self.is_arith = False
-#         else:
-#             self.is_arith = is_arith
-#
-#         self.nudge_weight = nudge_weight
-#
-#
-#
-#     def validate(self):
-#         if self.is_arith and self.is_nudge:
-#             raise Exception("Token action cannot be both arith and nudge")
-#
-#         if self.is_nudge and self.bas
 
 class NudgeAction:
     def __init__(self, base_segment=None, weight: Optional[float] = None, target=None):
@@ -157,15 +135,6 @@ def parse_token_actions(string) -> list[Union[str, NudgeAction, ArithAction]]:
 
     return out
 
-
-
-
-# class TokenDict(TypedDict):
-#     token_id: int
-#     weight: float
-#     nudge_id: Optional[int]
-#     nudge_weight: Optional[float]
-#
 
 class TokenDict:
     def __init__(self,

@@ -72,56 +72,6 @@ class FunCLIPTextEncode:
         # return ([[cond, {"pooled_output": pooled}]],)
         return (ret,)
 
-
-#
-# def buildGif(processing_res, path='./outputs/gif/'):
-#     width = processing_res.width
-#     height = processing_res.height
-#
-#     x_batch[0].save(f"{path}{speed}_{processing_res.seed}_batch_{y}.gif", save_all=True, append_images=x_batch[1:],
-#                     optimize=False, duration=speed, loop=0)
-#
-#     count_x = int(processing_res.images[0].width / width)
-#     count_y = int(processing_res.images[0].height / height)
-#
-#     gif_interval = sharedObj.Config['gif_interval']
-#     if gif_interval.find(",") > 0:
-#         speeds = list(map(int, gif_interval.split(",")))
-#     else:
-#         speeds = [int(gif_interval)]
-#
-#     gif_axis = sharedObj.Config['gif_axis']
-#     # ax1 = count_y if gif_axis == "X" else count_x
-#     # ax2 = count_x if gif_axis == "X" else count_y
-#     if gif_axis == "X":
-#         for y in range(0, count_y):
-#             x_batch = []
-#             for x in range(0, count_x):
-#                 bbox = (x * width, y * height, (x + 1) * width, (y + 1) * height)
-#                 print(bbox)
-#                 x_batch.append(processing_res.images[0].crop(bbox))
-#                 # images.save_image(processed.images[g], p.outpath_grids, "xyz_grid"
-#                 # working_slice.show()
-#             if sharedConfig.Config.get('gif_boomerang', False):
-#                 boomerang_in_place(x_batch)
-#             for speed in speeds:
-#
-#     else:
-#         print("Y!")
-#         for x in range(0, count_x):
-#             y_batch = []
-#             for y in range(0, count_y):
-#                 bbox = (x * width, y * height, (x + 1) * width, (y + 1) * height)
-#                 print(bbox)
-#                 y_batch.append(processing_res.images[0].crop(bbox))
-#                 # images.save_image(processed.images[g], p.outpath_grids, "xyz_grid"
-#                 # working_slice.show()
-#             if sharedConfig.Config.get('gif_boomerang', False):
-#                 boomerang_in_place(y_batch)
-#             for speed in speeds:
-#                 y_batch[0].save(f"{path}{speed}_{processing_res.seed}_batch_{x}.gif", save_all=True, append_images=y_batch[1:], optimize=False, duration=speed, loop=0)
-
-
 def tensor2img(tensor_img):
     i = 255. * tensor_img.cpu().numpy()
     i_np_arr = np.clip(i, 0, 255, out=i).astype(np.uint8, copy=False)
