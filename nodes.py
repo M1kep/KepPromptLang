@@ -1,5 +1,4 @@
 import random
-import types
 
 import numpy as np
 from PIL import Image
@@ -8,41 +7,8 @@ import folder_paths
 import comfy.sd
 import comfy.ops
 from custom_nodes.ClipStuff.lib.clip_model import SD1FunClipModel
-from custom_nodes.ClipStuff.lib.clip_model_patches import (
-    set_up_textual_embeddings,
-    encode_token_weights,
-    forward,
-)
-from custom_nodes.ClipStuff.lib.fun_clip_stuff import (
-    MyCLIPTextTransformer,
-)
+
 from custom_nodes.ClipStuff.lib.tokenizer import MyTokenizer
-
-
-class ClipPatcher:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {"required": {
-            "clip": ("CLIP",),
-        }}
-
-    RETURN_TYPES = ("CLIP",)
-    FUNCTION = "patch"
-    OUTPUT_IS_LIST = (False,)
-    CATEGORY = "conditioning"
-
-    def patch(self, clip):
-        # clip.cond_stage_model.transformer.text_model.embeddings = MyCLIPTextEmbeddings(clip.cond_stage_model.transformer.text_model.config)
-        # clip_config = CLIPTextConfig.from_json_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib", "clip_config.json"))
-        # with comfy.ops.use_comfy_ops():
-        #     with modeling_utils.no_init_weights():
-        clip.cond_stage_model.transformer.text_model = MyCLIPTextTransformer(clip.cond_stage_model.transformer.config)
-        clip.cond_stage_model.set_up_textual_embeddings = types.MethodType(set_up_textual_embeddings, clip.cond_stage_model)
-        clip.cond_stage_model.encode_token_weights = types.MethodType(encode_token_weights, clip.cond_stage_model)
-        clip.cond_stage_model.forward = types.MethodType(forward, clip.cond_stage_model)
-        clip.tokenizer = MyTokenizer(embedding_directory=clip.tokenizer.embedding_directory)
-        return (clip,)
-
 class EmptyClass:
     pass
 
