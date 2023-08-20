@@ -10,56 +10,7 @@ from comfy.sd import CLIP
 from custom_nodes.ClipStuff.lib.fun_clip_stuff import MyCLIPTextModel
 from custom_nodes.ClipStuff.lib.tokenizer import TokenDict
 
-
-class FunCLIP(CLIP):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def encode_from_tokens(self, tokens, return_pooled=False, position_ids=None):
-        if self.layer_idx is not None:
-            self.cond_stage_model.clip_layer(self.layer_idx)
-        else:
-            self.cond_stage_model.reset_clip_layer()
-        model_management.load_model_gpu(self.patcher)
-        cond, pooled = self.cond_stage_model.encode_token_weights(tokens, position_ids=position_ids)
-        if return_pooled:
-            return cond, pooled
-        return cond
-
-
-class FunClipTokenWeightEncoder:
-    def encode_token_weights(self, token_dicts: list[list[tuple[TokenDict]]], **kwargs):
-        to_encode = [list(
-            map(
-                lambda id: (TokenDict(token_id=id, weight=1.0, nudge_id=None),),
-                self.empty_tokens[0]
-            )
-        )]
-        for x in token_dicts:
-            to_encode.append(x)
-
-        out, pooled = self.encode(to_encode, **kwargs)
-        z_empty = out[0:1]
-        if pooled.shape[0] > 1:
-            first_pooled = pooled[1:2]
-        else:
-            first_pooled = pooled[0:1]
-
-        output = []
-        for k in range(1, out.shape[0]):
-            z = out[k:k + 1]
-            for i in range(len(z)):
-                for j in range(len(z[i])):
-                    weight = token_dicts[k - 1][j][0].weight
-                    z[i][j] = (z[i][j] - z_empty[0][j]) * weight + z_empty[0][j]
-            output.append(z)
-
-        if (len(output) == 0):
-            return z_empty.cpu(), first_pooled.cpu()
-        return torch.cat(output, dim=-2).cpu(), first_pooled.cpu()
-
-
-class SD1FunClipModel(torch.nn.Module, FunClipTokenWeightEncoder):
+class SD1FunClipModel(torch.nn.Module):
     """Uses the CLIP transformer encoder for text (from huggingface)"""
     LAYERS = [
         "last",
@@ -201,3 +152,33 @@ class SD1FunClipModel(torch.nn.Module, FunClipTokenWeightEncoder):
 
     def load_sd(self, sd):
         return self.transformer.load_state_dict(sd, strict=False)
+
+    def encode_token_weights(self, token_dicts: list[list[tuple[TokenDict]]], **kwargs):
+        to_encode = [list(
+            map(
+                lambda id: (TokenDict(token_id=id, weight=1.0, nudge_id=None),),
+                self.empty_tokens[0]
+            )
+        )]
+        for x in token_dicts:
+            to_encode.append(x)
+
+        out, pooled = self.encode(to_encode, **kwargs)
+        z_empty = out[0:1]
+        if pooled.shape[0] > 1:
+            first_pooled = pooled[1:2]
+        else:
+            first_pooled = pooled[0:1]
+
+        output = []
+        for k in range(1, out.shape[0]):
+            z = out[k:k + 1]
+            for i in range(len(z)):
+                for j in range(len(z[i])):
+                    weight = token_dicts[k - 1][j][0].weight
+                    z[i][j] = (z[i][j] - z_empty[0][j]) * weight + z_empty[0][j]
+            output.append(z)
+
+        if (len(output) == 0):
+            return z_empty.cpu(), first_pooled.cpu()
+        return torch.cat(output, dim=-2).cpu(), first_pooled.cpu()

@@ -1,10 +1,13 @@
-from .nodes import ClipInjectedCheckpointLoader, FunCLIPTextEncode, BuildGif
+from .nodes import (
+    FunCLIPTextEncode,
+    BuildGif,
+    ClipPatcher,
+    SpecialClipLoader,
+)
 
 NODE_CLASS_MAPPINGS = {
-    "ClipInjectedCheckpointLoader": ClipInjectedCheckpointLoader,
     "FunCLIPTextEncode": FunCLIPTextEncode,
-    "Build Gif": BuildGif
+    "Build Gif": BuildGif,
+    "Clip Patcher": ClipPatcher,
+    "Special CLIP Loader": SpecialClipLoader
 }
-#
-# EXTENSION_NAME = "ComfyLiterals"
-# symlink_web_dir("js", EXTENSION_NAME)

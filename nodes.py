@@ -1,36 +1,73 @@
 import random
+import types
 
 import numpy as np
-import torch
 from PIL import Image
 
 import folder_paths
 import comfy.sd
-from comfy import model_management
-from custom_nodes.ClipStuff.lib.clip_model import SD1FunClipModel, FunCLIP
+import comfy.ops
+from custom_nodes.ClipStuff.lib.clip_model import SD1FunClipModel
+from custom_nodes.ClipStuff.lib.clip_model_patches import (
+    set_up_textual_embeddings,
+    encode_token_weights,
+    forward,
+)
+from custom_nodes.ClipStuff.lib.fun_clip_stuff import (
+    MyCLIPTextTransformer,
+)
 from custom_nodes.ClipStuff.lib.tokenizer import MyTokenizer
 
 
-class ClipInjectedCheckpointLoader:
+class ClipPatcher:
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": {"config_name": (folder_paths.get_filename_list("configs"),),
-                             "ckpt_name": (folder_paths.get_filename_list("checkpoints"),)}}
+        return {"required": {
+            "clip": ("CLIP",),
+        }}
 
-    RETURN_TYPES = ("MODEL", "CLIP", "VAE")
-    FUNCTION = "load_checkpoint"
+    RETURN_TYPES = ("CLIP",)
+    FUNCTION = "patch"
+    OUTPUT_IS_LIST = (False,)
+    CATEGORY = "conditioning"
 
-    CATEGORY = "advanced/loaders"
+    def patch(self, clip):
+        # clip.cond_stage_model.transformer.text_model.embeddings = MyCLIPTextEmbeddings(clip.cond_stage_model.transformer.text_model.config)
+        # clip_config = CLIPTextConfig.from_json_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib", "clip_config.json"))
+        # with comfy.ops.use_comfy_ops():
+        #     with modeling_utils.no_init_weights():
+        clip.cond_stage_model.transformer.text_model = MyCLIPTextTransformer(clip.cond_stage_model.transformer.config)
+        clip.cond_stage_model.set_up_textual_embeddings = types.MethodType(set_up_textual_embeddings, clip.cond_stage_model)
+        clip.cond_stage_model.encode_token_weights = types.MethodType(encode_token_weights, clip.cond_stage_model)
+        clip.cond_stage_model.forward = types.MethodType(forward, clip.cond_stage_model)
+        clip.tokenizer = MyTokenizer(embedding_directory=clip.tokenizer.embedding_directory)
+        return (clip,)
 
-    def load_checkpoint(self, config_name, ckpt_name, output_vae=True, output_clip=True):
-        config_path = folder_paths.get_full_path("configs", config_name)
-        ckpt_path = folder_paths.get_full_path("checkpoints", ckpt_name)
-        return comfy.sd.load_checkpoint(config_path, ckpt_path, output_vae=True, output_clip=True,
-                                        embedding_directory=folder_paths.get_folder_paths("embeddings"),
-                                        clip_model=SD1FunClipModel,
-                                        clip_class=FunCLIP,
-                                        clip_tokenizer=MyTokenizer)
+class EmptyClass:
+    pass
 
+class SpecialClipLoader:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "source_clip": ("CLIP",),
+        }}
+
+    RETURN_TYPES = ("CLIP",)
+    FUNCTION = "load_clip"
+    OUTPUT_IS_LIST = (False,)
+    CATEGORY = "conditioning"
+
+    def load_clip(self, source_clip):
+        clip_target = EmptyClass()
+        clip_target.params = {}
+        clip_target.clip = SD1FunClipModel
+        clip_target.tokenizer = MyTokenizer
+
+        # TODO: Extract embedding directory from source_clip
+        clip = comfy.sd.CLIP(clip_target, embedding_directory=None)
+        comfy.sd.load_clip_weights(clip.cond_stage_model, source_clip.cond_stage_model.state_dict())
+        return (clip,)
 
 class FunCLIPTextEncode:
     @classmethod
