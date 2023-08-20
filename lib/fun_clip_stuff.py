@@ -58,6 +58,14 @@ class MyCLIPTextEmbeddings(CLIPTextEmbeddings):
                         nudge_start = 0
                         nudge_end = 768
                     inputs_embeds[batch_idx, token_idx][nudge_start:nudge_end] = (slerp(token[0].nudge_weight, inputs_embeds[batch_idx, token_idx][:], nudged_embed)[0][nudge_start:nudge_end])
+                elif token[0].arith_ops is not None:
+                    for op, id_list in token[0].arith_ops.items():
+                        if op == '+':
+                            for this_id in id_list:
+                                inputs_embeds[batch_idx, token_idx] += self.token_embedding(torch.LongTensor([this_id]).to(torch.device('cpu')))[0]
+                        elif op == '-':
+                            for this_id in id_list:
+                                inputs_embeds[batch_idx, token_idx] -= self.token_embedding(torch.LongTensor([this_id]).to(torch.device('cpu')))[0]
 
         position_embeddings = self.position_embedding(position_ids)
         embeddings = inputs_embeds + position_embeddings
