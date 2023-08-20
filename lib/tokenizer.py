@@ -1,47 +1,27 @@
-from enum import Enum
-from typing import Union, Optional
+from typing import Union
 
-from comfy.sd1_clip import SD1Tokenizer, parse_parentheses
-
-
-def token_weights(string, current_weight):
-    a = parse_parentheses(string)
-    out = []
-    for x in a:
-        weight = current_weight
-        if len(x) >= 2 and x[-1] == ')' and x[0] == '(':
-            x = x[1:-1]
-            xx = x.rfind(":")
-            weight *= 1.1
-            if xx > 0:
-                try:
-                    weight = float(x[xx+1:])
-                    x = x[:xx]
-                except:
-                    pass
-            out += token_weights(x, weight)
-        else:
-            out += [(x, current_weight)]
-    return out
+from comfy.sd1_clip import SD1Tokenizer
+from custom_nodes.ClipStuff.lib.actions import (
+    NudgeAction,
+    ArithAction,
+    ALL_START_CHARS,
+    ALL_END_CHARS,
+)
+from custom_nodes.ClipStuff.lib.actions.lib import (
+    is_any_action_segment,
+    is_action_segment,
+)
 
 
-class SpecialChars(str, Enum):
-    nudge_start = '['
-    nudge_end = ']'
-    arith_start = '<'
-    arith_end = '>'
-
-START_CHARS = [SpecialChars.nudge_start, SpecialChars.arith_start]
-END_CHARS = [SpecialChars.nudge_end, SpecialChars.arith_end]
 def parse_special_tokens(string):
     out = []
     current = ""
 
     for char in string:
-        if char in START_CHARS:
+        if char in ALL_START_CHARS:
             out += [current]
             current = char
-        elif char in END_CHARS:
+        elif char in ALL_END_CHARS:
             out += [current + char]
             current = ""
         else:
@@ -49,61 +29,18 @@ def parse_special_tokens(string):
     out += [current]
     return out
 
-class NudgeAction:
-    def __init__(self, base_segment=None, weight: Optional[float] = None, target=None):
-        self.base_segment = base_segment
-        self.weight = weight
-        self.target = target
-
-class ArithAction:
-    def __init__(self, base_segment: str, ops_str: str):
-        self.base_segment = base_segment
-        self.ops = self.process_ops_string(ops_str)
-
-    @classmethod
-    def process_ops_string(cls, ops_string):
-        supported_ops = ['+', '-']
-        # dict[[Union[Literal['add'], Literal['subtract']]], str]
-        ops_dict = {'+': [], '-': []}
-        buff = ''
-        curr_op_char = ''
-        for char in ops_string:
-            if char in supported_ops:
-                # We have a buffer
-                if buff != '':
-                    # Add op string
-                    ops_dict[curr_op_char] += [buff]
-                    # Reset buffer
-                    buff = ''
-                    # Set new current op char
-                    curr_op_char = char
-                    continue
-                else:
-                    # No buffer, the start of processing
-                    curr_op_char = char
-            else:
-                # Append char to buffer
-                buff += char
-
-        # Add last op to dict
-        ops_dict[curr_op_char] += [buff]
-        return ops_dict
-
 def parse_token_actions(string) -> list[Union[str, NudgeAction, ArithAction]]:
     out: list[Union[str, NudgeAction, ArithAction]] = []
     for prompt_segment in parse_special_tokens(string):
         if prompt_segment == "":
             continue
 
-        if prompt_segment[0] not in START_CHARS and prompt_segment[-1] not in END_CHARS:
+        if not is_any_action_segment(prompt_segment):
             out += [prompt_segment]
             continue
 
-        is_nudge = is_arith = False
-        if prompt_segment[0] == SpecialChars.nudge_start and prompt_segment[-1] == SpecialChars.nudge_end:
-            is_nudge = True
-        elif prompt_segment[0] == SpecialChars.arith_start and prompt_segment[-1] == SpecialChars.arith_end:
-            is_arith = True
+        is_nudge = is_action_segment(NudgeAction, prompt_segment)
+        is_arith = is_action_segment(ArithAction, prompt_segment)
 
         prompt_segment = prompt_segment[1:-1]
         word_sep_idx = prompt_segment.find(":")
@@ -116,7 +53,7 @@ def parse_token_actions(string) -> list[Union[str, NudgeAction, ArithAction]]:
         base_segment = prompt_segment[:word_sep_idx]
 
         if is_nudge:
-            trailing_segment = prompt_segment[word_sep_idx + 1:]
+            trailing_segment = prompt_segment[word_sep_idx + 1 :]
 
             weight_sep_idx = trailing_segment.find(":")
             # Has a weight(base_word:nudge_to:1.4)
@@ -130,7 +67,7 @@ def parse_token_actions(string) -> list[Union[str, NudgeAction, ArithAction]]:
 
             out += [NudgeAction(base_segment, weight, nudge_to)]
         elif is_arith:
-            arith_op_string = prompt_segment[word_sep_idx + 1:]
+            arith_op_string = prompt_segment[word_sep_idx + 1 :]
             out += [ArithAction(base_segment, arith_op_string)]
 
     return out
