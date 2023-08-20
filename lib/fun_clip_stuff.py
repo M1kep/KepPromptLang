@@ -32,7 +32,7 @@ class MyCLIPTextEmbeddings(CLIPTextEmbeddings):
     ) -> torch.Tensor:
         input_ids = [
             [
-                tokenDict[0]['token_id'] for tokenDict in batch
+                tokenDict[0].token_id for tokenDict in batch
             ] for batch in input_dicts
         ]
         tokens = torch.LongTensor(input_ids).to(torch.device('cpu'))
@@ -49,15 +49,15 @@ class MyCLIPTextEmbeddings(CLIPTextEmbeddings):
 
         for batch_idx, batch in enumerate(input_dicts):
             for token_idx, token in enumerate(batch):
-                if token[0]['nudge_id'] is not None:
-                    nudged_embed = inputs_embeds[batch_idx, token_idx][:] + self.token_embedding(torch.LongTensor([token[0]['nudge_id']]).to(torch.device('cpu')))[0]
-                    if token[0]['nudge_indx_start'] is not None and token[0]['nudge_index_stop'] is not None:
-                        nudge_start = int(token[0]['nudge_indx_start'])
-                        nudge_end = int(token[0]['nudge_index_stop'])
+                if token[0].nudge_id is not None:
+                    nudged_embed = inputs_embeds[batch_idx, token_idx][:] + self.token_embedding(torch.LongTensor([token[0].nudge_id]).to(torch.device('cpu')))[0]
+                    if token[0].nudge_index_start is not None and token[0].nudge_index_stop is not None:
+                        nudge_start = token[0].nudge_index_start
+                        nudge_end = token[0].nudge_index_stop
                     else:
                         nudge_start = 0
                         nudge_end = 768
-                    inputs_embeds[batch_idx, token_idx][nudge_start:nudge_end] = (slerp(token[0]['nudge_weight'], inputs_embeds[batch_idx, token_idx][:], nudged_embed)[0][nudge_start:nudge_end])
+                    inputs_embeds[batch_idx, token_idx][nudge_start:nudge_end] = (slerp(token[0].nudge_weight, inputs_embeds[batch_idx, token_idx][:], nudged_embed)[0][nudge_start:nudge_end])
 
         position_embeddings = self.position_embedding(position_ids)
         embeddings = inputs_embeds + position_embeddings

@@ -73,13 +73,18 @@ def parse_nudges(string) -> list[tuple[str, Union[str, None]]]:
 #
 
 class TokenDict:
-    def __init__(self, token_id: int, weight: float, nudge_id = None, nudge_weight = None, nudge_start: int = None, nudge_end: int = None):
+    def __init__(self, token_id: int, weight: float = None, nudge_id=None, nudge_weight=None, nudge_start: int = None,
+                 nudge_end: int = None):
+        if weight is None:
+            self.weight = 1.0
+        else:
+            self.weight = weight
+
         self.token_id = token_id
-        self.weight = weight
         self.nudge_id = nudge_id
         self.nudge_weight = nudge_weight
-        self.nudge_start = nudge_start
-        self.nudge_end = nudge_end
+        self.nudge_index_start = nudge_start
+        self.nudge_index_stop = nudge_end
 
 
 
@@ -107,7 +112,7 @@ class MyTokenizer(SD1Tokenizer):
 
         #tokenize words
         tokens: list[list[TokenDict]] = []
-        weight = 1.0
+
         for token_segment, nudge_to_token, nudge_weight in parsed_nudges:
             to_tokenize = token_segment.split(' ')
             to_tokenize = [x for x in to_tokenize if x != ""]
@@ -131,10 +136,10 @@ class MyTokenizer(SD1Tokenizer):
                         print(f"warning, embedding:{embedding_name} does not exist, ignoring")
                     else:
                         if len(embed.shape) == 1:
-                            tokens.append([TokenDict(token_id=embed, weight=weight, nudge_id=None, nudge_weight=None)])
+                            tokens.append([TokenDict(token_id=embed)])
                         else:
                             tokens.append([
-                                TokenDict(token_id=embed[x], weight=weight, nudge_id=None, nudge_weight=nudge_weight)
+                                TokenDict(token_id=embed[x])
                                 for x in range(embed.shape[0])
                             ])
                     #if we accidentally have leftover text, continue parsing using leftover, else move on to next word
@@ -145,14 +150,15 @@ class MyTokenizer(SD1Tokenizer):
                 #parse word
                 tokens.append([TokenDict(
                     token_id=t,
-                    weight=weight,
                     nudge_id=nudge_to_id,
-                    nudge_weight=nudge_weight
+                    nudge_weight=nudge_weight,
+                    nudge_start=nudge_start,
+                    nudge_end=nudge_end
                 ) for t in self.tokenizer(word)["input_ids"][1:-1]])
 
         #reshape token array to CLIP input size
         batched_tokens = []
-        batch = [(TokenDict(token_id=self.start_token, weight=1.0, nudge_id=None, nudge_weight=None), 0)]
+        batch = [(TokenDict(token_id=self.start_token), 0)]
         batched_tokens.append(batch)
         for i, t_group in enumerate(tokens):
             #determine if we're going to try and keep the tokens in a single batch
@@ -164,22 +170,22 @@ class MyTokenizer(SD1Tokenizer):
                     #break word in two and add end token
                     if is_large:
                         batch.extend([(tokenDict, i+1) for tokenDict in t_group[:remaining_length]])
-                        batch.append((TokenDict(token_id=self.end_token, weight=1.0, nudge_id=None, nudge_weight=None), 0))
+                        batch.append((TokenDict(token_id=self.end_token), 0))
                         t_group = t_group[remaining_length:]
                     #add end token and pad
                     else:
-                        batch.append((TokenDict(token_id=self.end_token, weight=1.0, nudge_id=None, nudge_weight=None), 0))
-                        batch.extend([(TokenDict(token_id=pad_token, weight=1.0, nudge_id=None, nudge_weight=None), 0)] * (remaining_length))
+                        batch.append((TokenDict(token_id=self.end_token), 0))
+                        batch.extend([(TokenDict(token_id=pad_token), 0)] * (remaining_length))
                     #start new batch
-                    batch = [(TokenDict(token_id=self.start_token, weight=1.0, nudge_id=None, nudge_weight=None), 1.0, 0)]
+                    batch = [(TokenDict(token_id=self.start_token), 1.0, 0)]
                     batched_tokens.append(batch)
                 else:
                     batch.extend([(tokenDict,i+1) for tokenDict in t_group])
                     t_group = []
 
         #fill last batch
-        batch.extend([(TokenDict(token_id=self.end_token, weight=1.0, nudge_id=None, nudge_weight=None), 0)] + [
-            (TokenDict(token_id=pad_token, weight=1.0, nudge_id=None, nudge_weight=None), 0)] * (self.max_length - len(batch) - 1))
+        batch.extend([(TokenDict(token_id=self.end_token), 0)] + [
+            (TokenDict(token_id=pad_token), 0)] * (self.max_length - len(batch) - 1))
 
         if not return_word_ids:
             batched_tokens = [

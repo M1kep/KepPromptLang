@@ -28,7 +28,7 @@ class FunCLIP(CLIP):
 
 
 class FunClipTokenWeightEncoder:
-    def encode_token_weights(self, token_dicts: list[TokenDict], **kwargs):
+    def encode_token_weights(self, token_dicts: list[list[tuple[TokenDict]]], **kwargs):
         to_encode = [list(
             map(
                 lambda id: (TokenDict(token_id=id, weight=1.0, nudge_id=None),),
@@ -50,7 +50,7 @@ class FunClipTokenWeightEncoder:
             z = out[k:k + 1]
             for i in range(len(z)):
                 for j in range(len(z[i])):
-                    weight = token_dicts[k - 1][j][0]['weight']
+                    weight = token_dicts[k - 1][j][0].weight
                     z[i][j] = (z[i][j] - z_empty[0][j]) * weight + z_empty[0][j]
             output.append(z)
 
@@ -115,7 +115,7 @@ class SD1FunClipModel(torch.nn.Module, FunClipTokenWeightEncoder):
         self.layer = self.layer_default[0]
         self.layer_idx = self.layer_default[1]
 
-    def set_up_textual_embeddings(self, tokens, current_embeds):
+    def set_up_textual_embeddings(self, tokens: list[list[tuple[TokenDict]]], current_embeds):
         out_tokens = []
         next_new_token = token_dict_size = current_embeds.weight.shape[0] - 1
         embedding_weights = []
@@ -123,7 +123,7 @@ class SD1FunClipModel(torch.nn.Module, FunClipTokenWeightEncoder):
         for batch in tokens:
             tokens_temp = []
             for tokenDict in batch:
-                y = tokenDict[0]['token_id']
+                y = tokenDict[0].token_id
                 if isinstance(y, int):
                     if y == token_dict_size:  # EOS token
                         y = -1
@@ -154,9 +154,9 @@ class SD1FunClipModel(torch.nn.Module, FunClipTokenWeightEncoder):
         for i, out_batch in enumerate(out_tokens):
             for tokenIdx in range(len(out_batch)):
                 if out_batch[tokenIdx] == -1:
-                    tokens[i][tokenIdx][0]['token_id'] = n # The EOS token should always be the largest one
+                    tokens[i][tokenIdx][0].token_id = n # The EOS token should always be the largest one
                 else:
-                    tokens[i][tokenIdx][0]['token_id'] = out_batch[tokenIdx]
+                    tokens[i][tokenIdx][0].token_id = out_batch[tokenIdx]
 
         # return processed_tokens
     def forward(self, tokens, **kwargs):
