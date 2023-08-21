@@ -53,7 +53,7 @@ class KepAdvTextEncode:
                 "clip": ("CLIP",),
                 "nudge_start": ("INT", {}),
                 "nudge_end": ("INT", {}),
-                "split_newlines": ("BOOL", {"default": True, "display": "Split Newlines"}),
+                "split_newlines": ("BOOL", {"default": True}),
             }
         }
 
@@ -105,7 +105,7 @@ class BuildGif:
                 "split_every": ("INT", {"default": -1}),
                 "output_mode": (
                     ["One Per Split", "Big Grid"],
-                    {"default": "Big Grid", "display": "Output Mode"},
+                    {"default": "Big Grid"},
                 ),
             }
         }
