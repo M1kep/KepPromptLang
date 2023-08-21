@@ -7,5 +7,5 @@ from .nodes import (
 NODE_CLASS_MAPPINGS = {
     "FunCLIPTextEncode": FunCLIPTextEncode,
     "Build Gif": BuildGif,
-    "Special CLIP Loader": SpecialClipLoader
+    "Special CLIP Loader": SpecialClipLoader,
 }

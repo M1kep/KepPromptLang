@@ -29,6 +29,7 @@ def parse_special_tokens(string):
     out += [current]
     return out
 
+
 def parse_token_actions(string) -> list[Union[str, NudgeAction, ArithAction]]:
     out: list[Union[str, NudgeAction, ArithAction]] = []
     for prompt_segment in parse_special_tokens(string):
@@ -93,7 +94,6 @@ class TokenDict:
         self.arith_ops = arith_ops
 
 
-
 class MyTokenizer(SD1Tokenizer):
     def __init__(self, tokenizer_path=None, max_length=77, pad_with_end=True, embedding_directory=None, embedding_size=768, embedding_key='clip_l', special_tokens=None):
         super().__init__(tokenizer_path, max_length, pad_with_end, embedding_directory, embedding_size, embedding_key)
@@ -116,7 +116,7 @@ class MyTokenizer(SD1Tokenizer):
             nudge_start = int(nudge_start)
             nudge_end = int(nudge_end)
 
-        #tokenize words
+        # tokenize words
         tokens: list[list[TokenDict]] = []
 
         for action in parsed_actions:
@@ -144,7 +144,7 @@ class MyTokenizer(SD1Tokenizer):
             to_tokenize = [x for x in to_tokenize if x != ""]
 
             for word in to_tokenize:
-                #if we find an embedding, deal with the embedding
+                # if we find an embedding, deal with the embedding
                 if word.startswith(self.embedding_identifier) and self.embedding_directory is not None:
                     embedding_name = word[len(self.embedding_identifier):].strip('\n')
                     embed, leftover = self._try_get_embedding(embedding_name)
@@ -158,12 +158,12 @@ class MyTokenizer(SD1Tokenizer):
                                 TokenDict(token_id=embed[x])
                                 for x in range(embed.shape[0])
                             ])
-                    #if we accidentally have leftover text, continue parsing using leftover, else move on to next word
+                    # if we accidentally have leftover text, continue parsing using leftover, else move on to next word
                     if leftover != "":
                         word = leftover
                     else:
                         continue
-                #parse word
+                # parse word
                 tokens.append([TokenDict(
                     token_id=t,
                     nudge_id=nudge_to_id,
@@ -173,34 +173,34 @@ class MyTokenizer(SD1Tokenizer):
                     arith_ops=arith_ops
                 ) for t in self.tokenizer(word)["input_ids"][1:-1]])
 
-        #reshape token array to CLIP input size
+        # reshape token array to CLIP input size
         batched_tokens = []
         batch = [(TokenDict(token_id=self.start_token), 0)]
         batched_tokens.append(batch)
         for i, t_group in enumerate(tokens):
-            #determine if we're going to try and keep the tokens in a single batch
+            # determine if we're going to try and keep the tokens in a single batch
             is_large = len(t_group) >= self.max_word_length
 
             while len(t_group) > 0:
                 if len(t_group) + len(batch) > self.max_length - 1:
                     remaining_length = self.max_length - len(batch) - 1
-                    #break word in two and add end token
+                    # break word in two and add end token
                     if is_large:
                         batch.extend([(tokenDict, i+1) for tokenDict in t_group[:remaining_length]])
                         batch.append((TokenDict(token_id=self.end_token), 0))
                         t_group = t_group[remaining_length:]
-                    #add end token and pad
+                    # add end token and pad
                     else:
                         batch.append((TokenDict(token_id=self.end_token), 0))
-                        batch.extend([(TokenDict(token_id=pad_token), 0)] * (remaining_length))
-                    #start new batch
+                        batch.extend([(TokenDict(token_id=pad_token), 0)] * remaining_length)
+                    # start new batch
                     batch = [(TokenDict(token_id=self.start_token), 1.0, 0)]
                     batched_tokens.append(batch)
                 else:
-                    batch.extend([(tokenDict,i+1) for tokenDict in t_group])
+                    batch.extend([(tokenDict, i+1) for tokenDict in t_group])
                     t_group = []
 
-        #fill last batch
+        # fill last batch
         batch.extend([(TokenDict(token_id=self.end_token), 0)] + [
             (TokenDict(token_id=pad_token), 0)] * (self.max_length - len(batch) - 1))
 

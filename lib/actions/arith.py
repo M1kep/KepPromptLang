@@ -2,8 +2,8 @@ from custom_nodes.ClipStuff.lib.actions.base import Action
 
 
 class ArithAction(Action):
-    START_CHAR = '<'
-    END_CHAR = '>'
+    START_CHAR = "<"
+    END_CHAR = ">"
 
     def __init__(self, base_segment: str, ops_str: str):
         self.base_segment = base_segment
@@ -11,19 +11,19 @@ class ArithAction(Action):
 
     @classmethod
     def process_ops_string(cls, ops_string):
-        supported_ops = ['+', '-']
+        supported_ops = ["+", "-"]
         # dict[[Union[Literal['add'], Literal['subtract']]], str]
-        ops_dict = {'+': [], '-': []}
-        buff = ''
-        curr_op_char = ''
+        ops_dict = {"+": [], "-": []}
+        buff = ""
+        curr_op_char = ""
         for char in ops_string:
             if char in supported_ops:
                 # We have a buffer
-                if buff != '':
+                if buff != "":
                     # Add op string
                     ops_dict[curr_op_char] += [buff]
                     # Reset buffer
-                    buff = ''
+                    buff = ""
                     # Set new current op char
                     curr_op_char = char
                     continue
