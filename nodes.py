@@ -44,7 +44,7 @@ class SpecialClipLoader:
         return (clip,)
 
 
-class FunCLIPTextEncode:
+class KepAdvTextEncode:
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -52,8 +52,8 @@ class FunCLIPTextEncode:
                 "text": ("STRING", {"multiline": True}),
                 "clip": ("CLIP",),
                 "nudge_start": ("INT", {}),
-                "nudge_end": ("INT", {})
-                # "slerp_power": ("FLOAT", {"min": 0.0, "max": 1.0}),
+                "nudge_end": ("INT", {}),
+                "split_newlines": ("BOOL", {"default": True, "display": "Split Newlines"}),
             }
         }
 
@@ -63,9 +63,14 @@ class FunCLIPTextEncode:
     CATEGORY = "conditioning"
 
     @staticmethod
-    def encode(clip, text, nudge_start, nudge_end):
+    def encode(clip, text, nudge_start, nudge_end, split_newlines):
         ret = []
-        for prompt in text.split("\n"):
+        if split_newlines:
+            prompts = text.split("\n")
+        else:
+            prompts = [text]
+
+        for prompt in prompts:
             if prompt.strip() == "":
                 continue
             tokens = clip.tokenizer.tokenize_with_weights(
@@ -79,17 +84,6 @@ class FunCLIPTextEncode:
             )
             cond = [[cond, {"pooled_output": pooled}]]
             ret.append(cond)
-        # if clip.layer_idx is not None:
-        #     clip.cond_stage_model.clip_layer(clip.layer_idx)
-        # else:
-        #     clip.cond_stage_model.reset_clip_layer()
-        #
-        # model_management.load_model_gpu(clip.patcher)
-        # position_ids = [0] * 77
-        # cond, pooled = clip.cond_stage_model.encode_token_weights(tokens, position_ids=position_ids)
-        # # return cond, pooled
-
-        # return ([[cond, {"pooled_output": pooled}]],)
         return (ret,)
 
 

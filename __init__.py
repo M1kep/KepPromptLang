@@ -1,11 +1,11 @@
 from .nodes import (
-    FunCLIPTextEncode,
+    KepAdvTextEncode,
     BuildGif,
     SpecialClipLoader,
 )
 
 NODE_CLASS_MAPPINGS = {
-    "FunCLIPTextEncode": FunCLIPTextEncode,
+    "Kep Adv Text Encode": KepAdvTextEncode,
     "Build Gif": BuildGif,
     "Special CLIP Loader": SpecialClipLoader,
 }
