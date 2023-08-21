@@ -109,12 +109,12 @@ class MyTokenizer(SD1Tokenizer):
 
         parsed_actions = parse_token_actions(text)
 
-        nudge_start = None
-        nudge_end = None
-        if kwargs.get('nudge_start', None) is not None and kwargs.get('nudge_end', None) is not None:
-            nudge_start = int(kwargs.get('nudge_start'))
-            nudge_end = int(kwargs.get('nudge_end'))
+        nudge_start = kwargs.get("nudge_start")
+        nudge_end = kwargs.get("nudge_end")
 
+        if nudge_start is not None and nudge_end is not None:
+            nudge_start = int(nudge_start)
+            nudge_end = int(nudge_end)
 
         #tokenize words
         tokens: list[list[TokenDict]] = []
