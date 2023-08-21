@@ -9,22 +9,28 @@ import comfy.ops
 from custom_nodes.ClipStuff.lib.clip_model import SD1FunClipModel
 
 from custom_nodes.ClipStuff.lib.tokenizer import MyTokenizer
+
+
 class EmptyClass:
     pass
+
 
 class SpecialClipLoader:
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": {
-            "source_clip": ("CLIP",),
-        }}
+        return {
+            "required": {
+                "source_clip": ("CLIP",),
+            }
+        }
 
     RETURN_TYPES = ("CLIP",)
     FUNCTION = "load_clip"
     OUTPUT_IS_LIST = (False,)
     CATEGORY = "conditioning"
 
-    def load_clip(self, source_clip):
+    @staticmethod
+    def load_clip(source_clip):
         clip_target = EmptyClass()
         clip_target.params = {}
         clip_target.clip = SD1FunClipModel
@@ -32,31 +38,45 @@ class SpecialClipLoader:
 
         # TODO: Extract embedding directory from source_clip
         clip = comfy.sd.CLIP(clip_target, embedding_directory=None)
-        comfy.sd.load_clip_weights(clip.cond_stage_model, source_clip.cond_stage_model.state_dict())
+        comfy.sd.load_clip_weights(
+            clip.cond_stage_model, source_clip.cond_stage_model.state_dict()
+        )
         return (clip,)
+
 
 class FunCLIPTextEncode:
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": {
-            "text": ("STRING", {"multiline": True}), "clip": ("CLIP",),
-            "nudge_start": ("INT", {}),
-            "nudge_end": ("INT", {})
-            # "slerp_power": ("FLOAT", {"min": 0.0, "max": 1.0}),
-        }}
+        return {
+            "required": {
+                "text": ("STRING", {"multiline": True}),
+                "clip": ("CLIP",),
+                "nudge_start": ("INT", {}),
+                "nudge_end": ("INT", {})
+                # "slerp_power": ("FLOAT", {"min": 0.0, "max": 1.0}),
+            }
+        }
 
     RETURN_TYPES = ("CONDITIONING",)
     FUNCTION = "encode"
     OUTPUT_IS_LIST = (True,)
     CATEGORY = "conditioning"
 
-    def encode(self, clip, text, nudge_start, nudge_end):
+    @staticmethod
+    def encode(clip, text, nudge_start, nudge_end):
         ret = []
         for prompt in text.split("\n"):
             if prompt.strip() == "":
                 continue
-            tokens = clip.tokenizer.tokenize_with_weights(text, return_word_ids=False, nudge_start=nudge_start, nudge_end=nudge_end)
-            cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True, position_ids=[0] * 77)
+            tokens = clip.tokenizer.tokenize_with_weights(
+                text,
+                return_word_ids=False,
+                nudge_start=nudge_start,
+                nudge_end=nudge_end,
+            )
+            cond, pooled = clip.encode_from_tokens(
+                tokens, return_pooled=True, position_ids=[0] * 77
+            )
             cond = [[cond, {"pooled_output": pooled}]]
             ret.append(cond)
         # if clip.layer_idx is not None:
