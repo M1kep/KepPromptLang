@@ -1,3 +1,4 @@
+import re
 from typing import Union
 
 from comfy.sd1_clip import SD1Tokenizer
@@ -6,14 +7,48 @@ from custom_nodes.ClipStuff.lib.actions import (
     ArithAction,
     ALL_START_CHARS,
     ALL_END_CHARS,
+    ALL_ACTIONS,
 )
+from custom_nodes.ClipStuff.lib.actions.base import Action
 from custom_nodes.ClipStuff.lib.actions.lib import (
     is_any_action_segment,
     is_action_segment,
 )
 
 
-def parse_special_tokens(string):
+arith_action = r'(<[a-zA-Z0-9\-_]+:[a-zA-Z0-9\-_]+>)'
+
+tokenizer_regex = re.compile(
+    fr'\d+\.\d+|\d+|[\w\s]+|[:+-{re.escape("".join(ALL_START_CHARS))}{re.escape("".join(ALL_END_CHARS))}]'
+)
+def tokenize(text: str) -> list[str]:
+    # Captures:
+    # 1. Words
+    # 2. Numbers(1.0, 1)
+    # 3. Special characters(ALL_START_CHARS, ALL_END_CHARS, :, +, -)
+    tokens = re.findall(tokenizer_regex, text)
+    print(tokens)
+    return [token.strip() for token in tokens]
+
+
+
+def parse_segment(tokens: list[str]) -> Union[str, Action]:
+    for action in ALL_ACTIONS:
+        if tokens[0] == action.START_CHAR:
+            return action.parse_segment(tokens, ALL_START_CHARS, ALL_END_CHARS, parse_segment)
+    # If we get here, it's a word
+    return tokens.pop(0)
+def parse(tokens: list[str]) -> list[Union[str, Action]]:
+    parsed = []
+    while tokens:
+        if tokens[0] in ALL_START_CHARS:
+            parsed.append(parse_segment(tokens))
+        else:
+            parsed.append(tokens.pop(0))
+    return parsed
+
+
+def parse_special_tokens(string) -> list[str]:
     out = []
     current = ""
 
@@ -30,49 +65,10 @@ def parse_special_tokens(string):
     return out
 
 
-def parse_token_actions(string) -> list[Union[str, NudgeAction, ArithAction]]:
-    out: list[Union[str, NudgeAction, ArithAction]] = []
-    for prompt_segment in parse_special_tokens(string):
-        if prompt_segment == "":
-            continue
-
-        if not is_any_action_segment(prompt_segment):
-            out += [prompt_segment]
-            continue
-
-        is_nudge = is_action_segment(NudgeAction, prompt_segment)
-        is_arith = is_action_segment(ArithAction, prompt_segment)
-
-        prompt_segment = prompt_segment[1:-1]
-        word_sep_idx = prompt_segment.find(":")
-
-        # No word seperator, add whole segment
-        if word_sep_idx < 0:
-            out += [prompt_segment]
-            continue
-
-        base_segment = prompt_segment[:word_sep_idx]
-
-        if is_nudge:
-            trailing_segment = prompt_segment[word_sep_idx + 1 :]
-
-            weight_sep_idx = trailing_segment.find(":")
-            # Has a weight(base_word:nudge_to:1.4)
-            if weight_sep_idx >= 0:
-                [nudge_to, weight] = trailing_segment.split(":")
-                weight = float(weight)
-            else:
-                # No weight(base_word:trailing_segment)
-                nudge_to = trailing_segment
-                weight = None
-
-            out += [NudgeAction(base_segment, weight, nudge_to)]
-        elif is_arith:
-            arith_op_string = prompt_segment[word_sep_idx + 1 :]
-            out += [ArithAction(base_segment, arith_op_string)]
-
-    return out
-
+def parse_segment_actions(string) -> list[Union[str, NudgeAction, ArithAction]]:
+    tokens = tokenize(string)
+    parsed = parse(tokens)
+    return parsed
 
 class TokenDict:
     def __init__(self,
@@ -101,13 +97,13 @@ class MyTokenizer(SD1Tokenizer):
     """
     :return: list of tuples (tokenDict, word_id?)
     """
-    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs):
+    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs) -> list[list[Action | int]]:
         if self.pad_with_end:
             pad_token = self.end_token
         else:
             pad_token = 0
 
-        parsed_actions = parse_token_actions(text)
+        parsed_actions = parse_segment_actions(text)
 
         nudge_start = kwargs.get("nudge_start")
         nudge_end = kwargs.get("nudge_end")
@@ -117,30 +113,30 @@ class MyTokenizer(SD1Tokenizer):
             nudge_end = int(nudge_end)
 
         # tokenize words
-        tokens: list[list[TokenDict]] = []
+        tokens: list[list[Action | int ]] = []
 
         for action in parsed_actions:
             nudge_weight = None
             nudge_to_id = None
             arith_ops = None
             if isinstance(action, str):
-                token_segment = action
+                segment_to_tokenize = action
             elif isinstance(action, NudgeAction):
-                token_segment = action.base_segment
+                segment_to_tokenize = action.base_segment
                 nudge_to_id = self.tokenizer(action.target)["input_ids"][1:-1][0]
 
                 nudge_weight = action.weight
                 if nudge_weight is None:
                     nudge_weight = 0.5
             elif isinstance(action, ArithAction):
-                token_segment = action.base_segment
+                segment_to_tokenize = action.base_segment
                 arith_ops = action.ops
                 for op in arith_ops:
                     arith_ops[op] = [self.tokenizer(word)["input_ids"][1:-1][0] for word in arith_ops[op]]
             else:
                 raise Exception(f"Unexpected action type: {type(action)}")
 
-            to_tokenize = token_segment.split(' ')
+            to_tokenize = segment_to_tokenize.split(' ')
             to_tokenize = [x for x in to_tokenize if x != ""]
 
             for word in to_tokenize:
@@ -164,6 +160,7 @@ class MyTokenizer(SD1Tokenizer):
                     else:
                         continue
                 # parse word
+                tokens.append([t] for t in self.tokenizer(word)["input_ids"][1:-1])
                 tokens.append([TokenDict(
                     token_id=t,
                     nudge_id=nudge_to_id,
