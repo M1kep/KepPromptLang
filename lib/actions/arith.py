@@ -1,5 +1,6 @@
 from typing import Callable, Union
 
+from comfy.sd1_clip import SD1Tokenizer
 from custom_nodes.ClipStuff.lib.actions.base import Action, PromptSegment
 
 
@@ -7,7 +8,7 @@ class ArithAction(Action):
     START_CHAR = "<"
     END_CHAR = ">"
 
-    def __init__(self, base_segment: PromptSegment, ops: dict[str, list[Union[str, Action]]]):
+    def __init__(self, base_segment: PromptSegment | Action, ops: dict[str, list[PromptSegment | Action]]):
         self.base_segment = base_segment
         self.ops = ops
 
@@ -19,8 +20,11 @@ class ArithAction(Action):
         if isinstance(self.base_segment, Action):
             base_segment_repr = self.base_segment.depth_repr(depth + 1)
             out += "\t" * depth + f"base_segment={base_segment_repr}\n"
+        elif isinstance(self.base_segment, PromptSegment):
+            out += "\t" * depth + f'base_segment={self.base_segment.depth_repr(depth)}'
         else:
             out += "\t" * depth + f'base_segment="{self.base_segment}",'
+
         for op_key, ops in self.ops.items():
             for op in ops:
                 out += "\n" + "\t" * depth + f'"{op_key}":[\n'
@@ -28,7 +32,7 @@ class ArithAction(Action):
                     op_repr = op.depth_repr(depth + 2)
                     out += "\t" * (depth + 1) + f"{op_repr}\n"
                 else:
-                    out += "\t" * (depth + 1) + f'"{op}",\n'
+                    out += "\t" * (depth + 1) + f'{op.depth_repr()},\n'
                 out += "\t" * depth + "],"
         out += "\n" + "\t" * (depth - 1) + ")"
         return out
@@ -40,7 +44,8 @@ class ArithAction(Action):
         tokens: list[str],
         start_chars: list[str],
         end_chars: list[str],
-        parent_parser: Callable[[list[str]], Union[str, 'Action']],
+        parent_parser: Callable[[list[str], SD1Tokenizer], Union[PromptSegment, 'Action']],
+        tokenizer: SD1Tokenizer,
     ) -> Action:
         """
         Parse an arithmetic action from a list of tokens
@@ -57,7 +62,7 @@ class ArithAction(Action):
         assert token == cls.START_CHAR, "ArithAction must start with " + cls.START_CHAR + " but got " + token
 
         # Parse base segment
-        base_segment = parent_parser(tokens)
+        base_segment = parent_parser(tokens, tokenizer)
 
         token = tokens.pop(0)
         assert token == ":", "ArithAction must have a ':' after the base segment" + " but got " + token
@@ -67,7 +72,7 @@ class ArithAction(Action):
         while tokens[0] != cls.END_CHAR:
             op_char = tokens.pop(0)
             assert op_char in ["+", "-"], "ArithAction must have a '+' or '-' as an op char but got " + op_char
-            ops[op_char].append(parent_parser(tokens))
+            ops[op_char].append(parent_parser(tokens, tokenizer))
 
         token = tokens.pop(0)
         assert token == cls.END_CHAR, "ArithAction must end with " + cls.END_CHAR + " but got " + token
