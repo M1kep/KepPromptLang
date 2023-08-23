@@ -7,6 +7,7 @@ from transformers.modeling_outputs import BaseModelOutputWithPooling
 from transformers.models.clip.modeling_clip import _expand_mask, CLIPTextEmbeddings, CLIPTextTransformer, \
     CLIPTextModel
 
+from custom_nodes.ClipStuff.lib.actions.base import PromptSegment, Action
 from custom_nodes.ClipStuff.lib.tokenizer import TokenDict
 
 def slerp(val, low, high):
@@ -30,47 +31,57 @@ class MyCLIPTextEmbeddings(CLIPTextEmbeddings):
             position_ids: Optional[torch.LongTensor] = None,
             inputs_embeds: Optional[torch.FloatTensor] = None,
     ) -> torch.Tensor:
-        input_ids = [
-            [
-                tokenDict[0].token_id for tokenDict in batch
-            ] for batch in input_dicts
-        ]
-        tokens = torch.LongTensor(input_ids).to(torch.device('cpu'))
-        input_shape = tokens.size()
-        input_ids = tokens.view(-1, input_shape[-1])
 
-        seq_length = input_ids.shape[-1] if input_ids is not None else inputs_embeds.shape[-2]
+
+        batches = []
+        for batch_idx, batch in enumerate(input_dicts):
+            results = []
+            for seg_or_action in batch:
+                if isinstance(seg_or_action, Action):
+                    results.append(seg_or_action.get_result(self.token_embedding))
+                else:
+                    results.append(seg_or_action.get_embeddings(self.token_embedding))
+            batches.append(results)
+
+        seq_length = batches[0][0].shape[-2]
 
         if position_ids is None:
             position_ids = self.position_ids[:, :seq_length]
 
-        if inputs_embeds is None:
-            inputs_embeds = self.token_embedding(input_ids)
+        # if inputs_embeds is None:
+        #     inputs_embeds = self.token_embedding(input_ids)
 
-        for batch_idx, batch in enumerate(input_dicts):
-            for token_idx, token in enumerate(batch):
-                if token[0].nudge_id is not None:
-                    nudged_embed = inputs_embeds[batch_idx, token_idx][:] + self.token_embedding(torch.LongTensor([token[0].nudge_id]).to(torch.device('cpu')))[0]
-                    if token[0].nudge_index_start is not None and token[0].nudge_index_stop is not None:
-                        nudge_start = token[0].nudge_index_start
-                        nudge_end = token[0].nudge_index_stop
-                    else:
-                        nudge_start = 0
-                        nudge_end = 768
-                    inputs_embeds[batch_idx, token_idx][nudge_start:nudge_end] = (slerp(token[0].nudge_weight, inputs_embeds[batch_idx, token_idx][:], nudged_embed)[0][nudge_start:nudge_end])
-                elif token[0].arith_ops is not None:
-                    for op, id_list in token[0].arith_ops.items():
-                        if op == '+':
-                            for this_id in id_list:
-                                inputs_embeds[batch_idx, token_idx] += self.token_embedding(torch.LongTensor([this_id]).to(torch.device('cpu')))[0]
-                        elif op == '-':
-                            for this_id in id_list:
-                                inputs_embeds[batch_idx, token_idx] -= self.token_embedding(torch.LongTensor([this_id]).to(torch.device('cpu')))[0]
+        # for batch_idx, batch in enumerate(input_dicts):
+        #     for token_idx, token in enumerate(batch):
+        #         if token[0].nudge_id is not None:
+        #             nudged_embed = inputs_embeds[batch_idx, token_idx][:] + self.token_embedding(torch.LongTensor([token[0].nudge_id]).to(torch.device('cpu')))[0]
+        #             if token[0].nudge_index_start is not None and token[0].nudge_index_stop is not None:
+        #                 nudge_start = token[0].nudge_index_start
+        #                 nudge_end = token[0].nudge_index_stop
+        #             else:
+        #                 nudge_start = 0
+        #                 nudge_end = 768
+        #             inputs_embeds[batch_idx, token_idx][nudge_start:nudge_end] = (slerp(token[0].nudge_weight, inputs_embeds[batch_idx, token_idx][:], nudged_embed)[0][nudge_start:nudge_end])
+        #         elif token[0].arith_ops is not None:
+        #             for op, id_list in token[0].arith_ops.items():
+        #                 if op == '+':
+        #                     for this_id in id_list:
+        #                         inputs_embeds[batch_idx, token_idx] += self.token_embedding(torch.LongTensor([this_id]).to(torch.device('cpu')))[0]
+        #                 elif op == '-':
+        #                     for this_id in id_list:
+        #                         inputs_embeds[batch_idx, token_idx] -= self.token_embedding(torch.LongTensor([this_id]).to(torch.device('cpu')))[0]
+
+        embeds = []
+        for batch in batches:
+            if len(batch) == 1:
+                embeds.append(batch[0])
+            else:
+                embeds.append(torch.cat(batch, dim=-2))
 
         position_embeddings = self.position_embedding(position_ids)
-        embeddings = inputs_embeds + position_embeddings
+        embeddings = torch.cat(embeds, dim=0) + position_embeddings
 
-        return embeddings, input_ids, input_shape
+        return embeddings
 
 
 class MyCLIPTextTransformer(CLIPTextTransformer):
@@ -80,7 +91,7 @@ class MyCLIPTextTransformer(CLIPTextTransformer):
 
     def forward(
             self,
-            input_ids: Optional[list[list[tuple[TokenDict]]]] = None,
+            input_ids: Optional[list[list[PromptSegment | Action]]] = None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.Tensor] = None,
             output_attentions: Optional[bool] = None,
@@ -103,9 +114,12 @@ class MyCLIPTextTransformer(CLIPTextTransformer):
         # input_shape = input_ids.size()
         # input_ids = input_ids.view(-1, input_shape[-1])
 
-        hidden_states, input_ids, input_shape = self.embeddings(input_dicts=input_ids)
+        hidden_states = self.embeddings(input_dicts=input_ids)
 
-        bsz, seq_len = input_shape
+        bsz = len(input_ids)
+        # TODO: Properly gather this
+        seq_len = 77
+        # bsz, seq_len = input_shape
         # CLIP's text model uses causal mask, prepare it here.
         # https://github.com/openai/CLIP/blob/cfcffb90e69f37bf2ff1e988237a0fbe41f33c04/clip/model.py#L324
         causal_attention_mask = self._build_causal_attention_mask(bsz, seq_len, hidden_states.dtype).to(
@@ -128,12 +142,25 @@ class MyCLIPTextTransformer(CLIPTextTransformer):
         last_hidden_state = encoder_outputs[0]
         last_hidden_state = self.final_layer_norm(last_hidden_state)
 
+
+        # Hacky way to get idx of first EOT token
+        eot_idx = [1]
+        for batch in input_ids[1:]:
+            idx = 0
+            for seg_or_action in batch:
+                if isinstance(seg_or_action, Action):
+                    idx += seg_or_action.token_length()
+                else:
+                    if seg_or_action.text == '__PAD__':
+                        break
+            eot_idx.append(idx)
         # text_embeds.shape = [batch_size, sequence_length, transformer.width]
         # take features from the eot embedding (eot_token is the highest number in each sequence)
         # casting to torch.int for onnx compatibility: argmax doesn't support int64 inputs with opset 14
+        # TODO: Get the index of the first EOT token
         pooled_output = last_hidden_state[
             torch.arange(last_hidden_state.shape[0], device=last_hidden_state.device),
-            input_ids.to(dtype=torch.int, device=last_hidden_state.device).argmax(dim=-1),
+            eot_idx
         ]
 
         if not return_dict:

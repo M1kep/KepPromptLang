@@ -1,10 +1,53 @@
 from typing import Optional, Union, Callable
 
+import torch
+from torch.nn import Embedding
+
 from comfy.sd1_clip import SD1Tokenizer
 from custom_nodes.ClipStuff.lib.actions.base import Action, PromptSegment
 
 
 class NudgeAction(Action):
+    def token_length(self):
+        # Nudge nudges the embeddings of the base segment, so the length is the length of the base segment
+        if isinstance(self.base_segment, Action):
+            return self.base_segment.token_length()
+
+        return len(self.base_segment.tokens)
+
+    def get_all_segments(self):
+        segments = []
+        if isinstance(self.base_segment, Action):
+            segments += self.base_segment.get_all_segments()
+        else:
+            segments.append(self.base_segment)
+
+        if isinstance(self.target, Action):
+            segments += self.target.get_all_segments()
+        else:
+            segments.append(self.target)
+
+        return segments
+
+    def get_result(self, embedding_module: Embedding):
+        if isinstance(self.base_segment, Action):
+            base_segment_result = self.base_segment.get_result(embedding_module)
+        else:
+            base_segment_result = self.base_segment.get_embeddings(embedding_module)
+
+        if isinstance(self.target, Action):
+            target_segment_result = self.target.get_result(embedding_module)
+        else:
+            target_segment_result = self.target.get_embeddings(embedding_module)
+
+        base_mean = torch.mean(base_segment_result, dim=1, keepdim=True)
+        if target_segment_result.shape[1] == 1:
+            translation_vector = target_segment_result - base_mean
+        else:
+            translation_vector = torch.mean(target_segment_result, dim=1, keepdim=True) - base_mean
+
+        return base_segment_result.add(translation_vector, alpha=self.weight)
+
     START_CHAR = "["
     END_CHAR = "]"
 

@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Union
 
+import torch
 from torch import Tensor
+from torch.nn import Embedding
 
 from comfy.sd1_clip import SD1Tokenizer
 
@@ -15,6 +17,18 @@ class Action(ABC):
     @property
     @abstractmethod
     def END_CHAR(self):
+        pass
+
+    @abstractmethod
+    def token_length(self):
+        pass
+
+    @abstractmethod
+    def get_all_segments(self):
+        pass
+
+    @abstractmethod
+    def get_result(self, embedding_module: Embedding):
         pass
 
     @classmethod
@@ -36,6 +50,14 @@ class PromptSegment:
     def __init__(self, text: str, tokens: list[Union[int, Tensor]]):
         self.text = text
         self.tokens = tokens
+
+    def token_length(self):
+        return len(self.tokens)
+
+    def get_embeddings(self, embedding_module: Embedding):
+        tensors = torch.LongTensor(self.tokens).to(torch.device('cpu'))
+        unsqueezed_tensors = tensors.unsqueeze(0)
+        return embedding_module(unsqueezed_tensors)
 
     def depth_repr(self, depth=1):
         out = f'"{self.text}"('
@@ -59,7 +81,10 @@ def build_prompt_segment(text: str, tokenizer: SD1Tokenizer) -> PromptSegment:
             if embedding is None:
                 print(f"warning, embedding:{embedding_name} does not exist, ignoring")
             else:
-                tokens.append(embedding)
+                if len(embedding.shape) == 1:
+                    tokens.append(embedding)
+                else:
+                    tokens.extend(embedding)
 
             if leftover != "":
                 word = leftover

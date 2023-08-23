@@ -18,7 +18,7 @@ from custom_nodes.ClipStuff.lib.actions.lib import (
     is_any_action_segment,
     is_action_segment,
 )
-
+from custom_nodes.ClipStuff.lib.actions.utils import batch_size_info
 
 arith_action = r'(<[a-zA-Z0-9\-_]+:[a-zA-Z0-9\-_]+>)'
 
@@ -115,9 +115,11 @@ class MyTokenizer(SD1Tokenizer):
         super().__init__(tokenizer_path, max_length, pad_with_end, embedding_directory, embedding_size, embedding_key)
 
     """
-    :return: list of tuples (tokenDict, word_id?)
+    Doesn't actually tokenize...
+    Returns batches of segments and actions
+    :return: List of list(batches) of segments and actions
     """
-    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs) -> list[list[Action | int]]:
+    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs) -> list[list[PromptSegment | Action]]:
         if self.pad_with_end:
             pad_token = self.end_token
         else:
@@ -139,44 +141,38 @@ class MyTokenizer(SD1Tokenizer):
             else:
                 print(segment.depth_repr())
 
-        tokens: list[list[Action | int ]] = []
-
         # reshape token array to CLIP input size
-        batched_tokens = []
-        batch = [(TokenDict(token_id=self.start_token), 0)]
-        batched_tokens.append(batch)
-        for i, t_group in enumerate(tokens):
+        batched_segments = []
+        batch = [PromptSegment(text="[SOT]", tokens=[self.start_token])]
+        # batched_segments.append(batch)
+        batch_size = 1
+        for segment in parsed_actions:
+            num_tokens = segment.token_length()
             # determine if we're going to try and keep the tokens in a single batch
-            is_large = len(t_group) >= self.max_word_length
+            is_large = num_tokens >= self.max_word_length
 
-            while len(t_group) > 0:
-                if len(t_group) + len(batch) > self.max_length - 1:
-                    remaining_length = self.max_length - len(batch) - 1
-                    # break word in two and add end token
-                    if is_large:
-                        batch.extend([(tokenDict, i+1) for tokenDict in t_group[:remaining_length]])
-                        batch.append((TokenDict(token_id=self.end_token), 0))
-                        t_group = t_group[remaining_length:]
-                    # add end token and pad
-                    else:
-                        batch.append((TokenDict(token_id=self.end_token), 0))
-                        batch.extend([(TokenDict(token_id=pad_token), 0)] * remaining_length)
-                    # start new batch
-                    batch = [(TokenDict(token_id=self.start_token), 1.0, 0)]
-                    batched_tokens.append(batch)
-                else:
-                    batch.extend([(tokenDict, i+1) for tokenDict in t_group])
-                    t_group = []
+            # If the segment is too large to fit in a single batch, pad the current batch and start a new one
+            if num_tokens + batch_size > self.max_length - 1:
+                remaining_length = self.max_length - batch_size - 1 # -1 for end token
+                # Pad batch
+                batch.append(PromptSegment("__PAD__", [self.end_token] + [pad_token] * remaining_length - 1))
+                batched_segments.append(batch)
 
-        # fill last batch
-        batch.extend([(TokenDict(token_id=self.end_token), 0)] + [
-            (TokenDict(token_id=pad_token), 0)] * (self.max_length - len(batch) - 1))
+                # start new batch
+                batch = [PromptSegment(text="[SOT]", tokens=[self.start_token]), segment]
+                batch_size = num_tokens + 1 # +1 for start token
+                continue
 
-        if not return_word_ids:
-            batched_tokens = [
-                [
-                    (tokenInfo[0],) for tokenInfo in batch
-                ] for batch in batched_tokens
-            ]
+            # If the segment is small enough to fit in the current batch, add it
+            batch.append(segment)
+            batch_size += num_tokens
 
-        return batched_tokens
+        # Pad the last batch
+        remaining_length = self.max_length - batch_size - 1 # -1 for end token
+        batch.append(PromptSegment("__PAD__", [self.end_token] + [pad_token] * remaining_length))
+        batched_segments.append(batch)
+
+        for batch in batched_segments:
+            batch_size_info(batch)
+
+        return batched_segments
