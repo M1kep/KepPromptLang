@@ -18,8 +18,18 @@ from custom_nodes.ClipStuff.lib.actions.lib import (
 
 arith_action = r'(<[a-zA-Z0-9\-_]+:[a-zA-Z0-9\-_]+>)'
 
+# TODO: Get embedding identifier from tokenizer
 tokenizer_regex = re.compile(
-    fr'\d+\.\d+|\d+|[\w\s]+|[:+-{re.escape("".join(ALL_START_CHARS))}{re.escape("".join(ALL_END_CHARS))}]'
+    fr"""
+    \d+\.\d+                  # Capture decimals
+    |
+    (?:(?!embedding:)[\w\s]|embedding:[a-zA-Z0-9_]+)+ # Capture sequences of characters, including "embedding:"
+    |
+    \d+                       # Capture whole numbers
+    |
+    [:+-{re.escape("".join(ALL_START_CHARS))}{re.escape("".join(ALL_END_CHARS))}] # Capture special characters including start and end characters
+    """,
+    re.VERBOSE
 )
 def tokenize(text: str) -> list[str]:
     # Captures:
@@ -43,6 +53,9 @@ def parse_segment(tokens: list[str], tokenizer: SD1Tokenizer) -> PromptSegment |
 def parse(tokens: list[str], tokenizer: SD1Tokenizer) -> list[PromptSegment | Action]:
     parsed = []
     while tokens:
+        if tokens[0] == '':
+            tokens.pop(0)
+            continue
         print("Parse: Checking token: " + tokens[0])
         if tokens[0] in ALL_START_CHARS:
             parsed.append(parse_segment(tokens, tokenizer))
