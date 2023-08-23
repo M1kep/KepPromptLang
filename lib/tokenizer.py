@@ -9,7 +9,11 @@ from custom_nodes.ClipStuff.lib.actions import (
     ALL_END_CHARS,
     ALL_ACTIONS,
 )
-from custom_nodes.ClipStuff.lib.actions.base import Action, PromptSegment
+from custom_nodes.ClipStuff.lib.actions.base import (
+    Action,
+    PromptSegment,
+    build_prompt_segment,
+)
 from custom_nodes.ClipStuff.lib.actions.lib import (
     is_any_action_segment,
     is_action_segment,
@@ -48,7 +52,7 @@ def parse_segment(tokens: list[str], tokenizer: SD1Tokenizer) -> PromptSegment |
         if tokens[0] == action.START_CHAR:
             return action.parse_segment(tokens, ALL_START_CHARS, ALL_END_CHARS, parse_segment, tokenizer)
     # If we get here, it's a text segment
-    return PromptSegment(tokens.pop(0), tokenizer)
+    return build_prompt_segment(tokens.pop(0), tokenizer)
 
 def parse(tokens: list[str], tokenizer: SD1Tokenizer) -> list[PromptSegment | Action]:
     parsed = []
@@ -60,7 +64,7 @@ def parse(tokens: list[str], tokenizer: SD1Tokenizer) -> list[PromptSegment | Ac
         if tokens[0] in ALL_START_CHARS:
             parsed.append(parse_segment(tokens, tokenizer))
         else:
-            parsed.append(PromptSegment(tokens.pop(0), tokenizer))
+            parsed.append(build_prompt_segment(tokens.pop(0), tokenizer))
     return parsed
 
 

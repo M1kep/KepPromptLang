@@ -33,10 +33,9 @@ class Action(ABC):
         raise NotImplementedError()
 
 class PromptSegment:
-    def __init__(self, text, tokenizer: SD1Tokenizer):
+    def __init__(self, text: str, tokens: list[Union[int, Tensor]]):
         self.text = text
-        self.tokens: list[Union[int, Tensor]] = []
-        self.process_text(tokenizer)
+        self.tokens = tokens
 
     def depth_repr(self, depth=1):
         out = f'"{self.text}"('
@@ -47,22 +46,25 @@ class PromptSegment:
         out += ")"
         return out
 
-    def process_text(self, tokenizer: SD1Tokenizer):
-        split_text = self.text.split(" ")
-        for word in split_text:
-            if word.startswith(tokenizer.embedding_identifier) and tokenizer.embedding_directory is not None:
-                embedding_name = word[len(tokenizer.embedding_identifier):].strip('\n')
+def build_prompt_segment(text: str, tokenizer: SD1Tokenizer) -> PromptSegment:
+    split_text = text.split(" ")
+    tokens = []
+    for word in split_text:
+        if word.startswith(tokenizer.embedding_identifier) and tokenizer.embedding_directory is not None:
+            embedding_name = word[len(tokenizer.embedding_identifier):].strip('\n')
 
-                get_embed_ret = tokenizer._try_get_embedding(embedding_name)
-                embedding = get_embed_ret[0]
-                leftover = get_embed_ret[1]
-                if embedding is None:
-                    print(f"warning, embedding:{embedding_name} does not exist, ignoring")
-                else:
-                    self.tokens.append(embedding)
+            get_embed_ret = tokenizer._try_get_embedding(embedding_name)
+            embedding = get_embed_ret[0]
+            leftover = get_embed_ret[1]
+            if embedding is None:
+                print(f"warning, embedding:{embedding_name} does not exist, ignoring")
+            else:
+                tokens.append(embedding)
 
-                if leftover != "":
-                    word = leftover
-                else:
-                    continue
-            self.tokens.extend(tokenizer.tokenizer(word)["input_ids"][1:-1])
+            if leftover != "":
+                word = leftover
+            else:
+                continue
+        tokens.extend(tokenizer.tokenizer(word)["input_ids"][1:-1])
+
+    return PromptSegment(text, tokens)
