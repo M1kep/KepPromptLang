@@ -1,6 +1,7 @@
 from typing import Optional, Union, Callable
 
-from custom_nodes.ClipStuff.lib.actions.base import Action
+from comfy.sd1_clip import SD1Tokenizer
+from custom_nodes.ClipStuff.lib.actions.base import Action, PromptSegment
 
 
 class NudgeAction(Action):
@@ -9,8 +10,8 @@ class NudgeAction(Action):
 
     def __init__(
         self,
-        base_segment: Union[str, Action],
-        target: Union[str, Action],
+        base_segment: PromptSegment | Action,
+        target: Union[PromptSegment, Action],
         weight: Optional[float] = None,
     ):
         self.base_segment = base_segment
@@ -26,13 +27,13 @@ class NudgeAction(Action):
             base_segment_repr = self.base_segment.depth_repr(depth + 1)
             out += "\t" * depth + f"base_segment={base_segment_repr}\n"
         else:
-            out += "\t" * depth + f'base_segment="{self.base_segment}",\n'
+            out += "\t" * depth + f'base_segment={self.base_segment.depth_repr()},\n'
 
         if isinstance(self.target, Action):
             target_repr = self.target.depth_repr(depth + 1)
             out += "\t" * depth + f"target={target_repr},\n"
         else:
-            out += "\t" * depth + f"target={self.target},\n"
+            out += "\t" * depth + f"target={self.target.depth_repr()},\n"
         out += "\t" * depth + f"weight={self.weight},\n"
         out += "\t" * (depth - 1) + ")"
         return out
@@ -43,7 +44,8 @@ class NudgeAction(Action):
         tokens: list[str],
         start_chars: list[str],
         end_chars: list[str],
-        parent_parser: Callable[[list[str]], Union[str, Action]],
+        parent_parser: Callable[[list[str], SD1Tokenizer], PromptSegment | Action],
+        tokenizer: SD1Tokenizer,
     ) -> Action:
         """
         Parse a nudge action from a list of tokens
@@ -62,13 +64,13 @@ class NudgeAction(Action):
         assert token == cls.START_CHAR, "NudgeAction must start with " + cls.START_CHAR + " got " + token
 
         # Parse base segment
-        base_segment = parent_parser(tokens)
+        base_segment = parent_parser(tokens, tokenizer)
 
         token = tokens.pop(0)
         assert token == ":", "NudgeAction must have a ':' after the base segment" + " but got " + token
 
         # Parse target segment
-        target_segment = parent_parser(tokens)
+        target_segment = parent_parser(tokens, tokenizer)
 
         # Parse weight if it exists
         weight = None

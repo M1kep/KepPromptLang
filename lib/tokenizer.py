@@ -9,7 +9,7 @@ from custom_nodes.ClipStuff.lib.actions import (
     ALL_END_CHARS,
     ALL_ACTIONS,
 )
-from custom_nodes.ClipStuff.lib.actions.base import Action
+from custom_nodes.ClipStuff.lib.actions.base import Action, PromptSegment
 from custom_nodes.ClipStuff.lib.actions.lib import (
     is_any_action_segment,
     is_action_segment,
@@ -32,19 +32,22 @@ def tokenize(text: str) -> list[str]:
 
 
 
-def parse_segment(tokens: list[str]) -> Union[str, Action]:
+def parse_segment(tokens: list[str], tokenizer: SD1Tokenizer) -> PromptSegment | Action:
+    print("Parse segment: Checking token: " + tokens[0])
     for action in ALL_ACTIONS:
         if tokens[0] == action.START_CHAR:
-            return action.parse_segment(tokens, ALL_START_CHARS, ALL_END_CHARS, parse_segment)
-    # If we get here, it's a word
-    return tokens.pop(0)
-def parse(tokens: list[str]) -> list[Union[str, Action]]:
+            return action.parse_segment(tokens, ALL_START_CHARS, ALL_END_CHARS, parse_segment, tokenizer)
+    # If we get here, it's a text segment
+    return PromptSegment(tokens.pop(0), tokenizer)
+
+def parse(tokens: list[str], tokenizer: SD1Tokenizer) -> list[PromptSegment | Action]:
     parsed = []
     while tokens:
+        print("Parse: Checking token: " + tokens[0])
         if tokens[0] in ALL_START_CHARS:
-            parsed.append(parse_segment(tokens))
+            parsed.append(parse_segment(tokens, tokenizer))
         else:
-            parsed.append(tokens.pop(0))
+            parsed.append(PromptSegment(tokens.pop(0), tokenizer))
     return parsed
 
 
@@ -65,9 +68,9 @@ def parse_special_tokens(string) -> list[str]:
     return out
 
 
-def parse_segment_actions(string) -> list[Union[str, NudgeAction, ArithAction]]:
+def parse_segment_actions(string, tokenizer: SD1Tokenizer) -> list[PromptSegment | NudgeAction | ArithAction]:
     tokens = tokenize(string)
-    parsed = parse(tokens)
+    parsed = parse(tokens, tokenizer)
     return parsed
 
 class TokenDict:
@@ -103,72 +106,23 @@ class MyTokenizer(SD1Tokenizer):
         else:
             pad_token = 0
 
-        parsed_actions = parse_segment_actions(text)
+        parsed_actions = parse_segment_actions(text, self)
 
-        nudge_start = kwargs.get("nudge_start")
-        nudge_end = kwargs.get("nudge_end")
-
-        if nudge_start is not None and nudge_end is not None:
-            nudge_start = int(nudge_start)
-            nudge_end = int(nudge_end)
-
-        # tokenize words
-        tokens: list[list[Action | int ]] = []
-
-        for action in parsed_actions:
-            nudge_weight = None
-            nudge_to_id = None
-            arith_ops = None
-            if isinstance(action, str):
-                segment_to_tokenize = action
-            elif isinstance(action, NudgeAction):
-                segment_to_tokenize = action.base_segment
-                nudge_to_id = self.tokenizer(action.target)["input_ids"][1:-1][0]
-
-                nudge_weight = action.weight
-                if nudge_weight is None:
-                    nudge_weight = 0.5
-            elif isinstance(action, ArithAction):
-                segment_to_tokenize = action.base_segment
-                arith_ops = action.ops
-                for op in arith_ops:
-                    arith_ops[op] = [self.tokenizer(word)["input_ids"][1:-1][0] for word in arith_ops[op]]
+        # nudge_start = kwargs.get("nudge_start")
+        # nudge_end = kwargs.get("nudge_end")
+        #
+        # if nudge_start is not None and nudge_end is not None:
+        #     nudge_start = int(nudge_start)
+        #     nudge_end = int(nudge_end)
+        #
+        # # tokenize words
+        for segment in parsed_actions:
+            if isinstance(segment, Action):
+                print(segment.depth_repr())
             else:
-                raise Exception(f"Unexpected action type: {type(action)}")
+                print(segment.depth_repr())
 
-            to_tokenize = segment_to_tokenize.split(' ')
-            to_tokenize = [x for x in to_tokenize if x != ""]
-
-            for word in to_tokenize:
-                # if we find an embedding, deal with the embedding
-                if word.startswith(self.embedding_identifier) and self.embedding_directory is not None:
-                    embedding_name = word[len(self.embedding_identifier):].strip('\n')
-                    embed, leftover = self._try_get_embedding(embedding_name)
-                    if embed is None:
-                        print(f"warning, embedding:{embedding_name} does not exist, ignoring")
-                    else:
-                        if len(embed.shape) == 1:
-                            tokens.append([TokenDict(token_id=embed)])
-                        else:
-                            tokens.append([
-                                TokenDict(token_id=embed[x])
-                                for x in range(embed.shape[0])
-                            ])
-                    # if we accidentally have leftover text, continue parsing using leftover, else move on to next word
-                    if leftover != "":
-                        word = leftover
-                    else:
-                        continue
-                # parse word
-                tokens.append([t] for t in self.tokenizer(word)["input_ids"][1:-1])
-                tokens.append([TokenDict(
-                    token_id=t,
-                    nudge_id=nudge_to_id,
-                    nudge_weight=nudge_weight,
-                    nudge_start=nudge_start,
-                    nudge_end=nudge_end,
-                    arith_ops=arith_ops
-                ) for t in self.tokenizer(word)["input_ids"][1:-1]])
+        tokens: list[list[Action | int ]] = []
 
         # reshape token array to CLIP input size
         batched_tokens = []
