@@ -1,5 +1,6 @@
 import contextlib
 import os
+from typing import Union
 
 import torch
 from transformers import CLIPTextConfig, modeling_utils
@@ -7,6 +8,7 @@ from transformers import CLIPTextConfig, modeling_utils
 from comfy import model_management
 import comfy.ops
 from comfy.sd import CLIP
+from custom_nodes.ClipStuff.lib.actions.base import PromptSegment, Action
 from custom_nodes.ClipStuff.lib.fun_clip_stuff import MyCLIPTextModel
 from custom_nodes.ClipStuff.lib.tokenizer import TokenDict
 
@@ -66,50 +68,69 @@ class SD1FunClipModel(torch.nn.Module):
         self.layer = self.layer_default[0]
         self.layer_idx = self.layer_default[1]
 
-    def set_up_textual_embeddings(self, tokens: list[list[tuple[TokenDict]]], current_embeds):
-        out_tokens = []
+    def set_up_textual_embeddings(self, tokens: list[list[PromptSegment | Action]], current_embeds):
         next_new_token = token_dict_size = current_embeds.weight.shape[0] - 1
         embedding_weights = []
 
+        # For each batch
         for batch in tokens:
-            tokens_temp = []
-            for tokenDict in batch:
-                y = tokenDict[0].token_id
-                if isinstance(y, int):
-                    if y == token_dict_size:  # EOS token
-                        y = -1
-                    tokens_temp += [y]
+            for seg_or_action in batch:
+                if isinstance(seg_or_action, Action):
+                    segments = seg_or_action.get_all_segments()
                 else:
-                    if y.shape[0] == current_embeds.weight.shape[1]:
-                        embedding_weights += [y]
-                        tokens_temp += [next_new_token]
-                        next_new_token += 1
-                    else:
-                        print("WARNING: shape mismatch when trying to apply embedding, embedding will be ignored",
-                              y.shape[0], current_embeds.weight.shape[1])
-            while len(tokens_temp) < len(batch):
-                tokens_temp += [self.empty_tokens[0][-1]]
-            out_tokens += [tokens_temp]
+                    segments = [seg_or_action]
+
+                for segment in segments:
+                    tokens_temp = []
+                    segment_length = segment.token_length()
+                    for tid_or_tensor in segment.tokens:
+                        if isinstance(tid_or_tensor, int):
+                            if tid_or_tensor == token_dict_size:  # Is EOS token
+                                tid_or_tensor = -1 # Set to -1 so that it can be replaced with the EOS token later
+                            tokens_temp += [tid_or_tensor]
+                        else:
+                            if tid_or_tensor.shape[0] == current_embeds.weight.shape[1]:
+                                embedding_weights += [tid_or_tensor]
+                                tokens_temp += [next_new_token]
+                                next_new_token += 1
+                            else:
+                                print("WARNING: shape mismatch when trying to apply embedding, embedding will be ignored",
+                                      tid_or_tensor.shape[0], current_embeds.weight.shape[1])
+                    if len(tokens_temp) < segment_length:
+                        # Pretty sure this is only needed if the embedding is not the same size as the CLIP embedding
+                        print("WARNING: segment length mismatch, padding with EOS token")
+                        tokens_temp.extend([self.empty_tokens[0][-1] * (segment_length - len(tokens_temp))])
+                    segment.tokens = tokens_temp
 
         n = token_dict_size
         if len(embedding_weights) > 0:
+            # Create new embedding, with size of current embedding + number of new embeddings
             new_embedding = torch.nn.Embedding(next_new_token + 1, current_embeds.weight.shape[1],
                                                device=current_embeds.weight.device, dtype=current_embeds.weight.dtype)
+            # Copy current embedding weights to new embedding
             new_embedding.weight[:token_dict_size] = current_embeds.weight[:-1]
+            # Add new embeddings
             for embed in embedding_weights:
                 new_embedding.weight[n] = embed
                 n += 1
+
+            # Set re-add the EOS token
             new_embedding.weight[n] = current_embeds.weight[-1]  # EOS embedding
             self.transformer.set_input_embeddings(new_embedding)
 
-        for i, out_batch in enumerate(out_tokens):
-            for tokenIdx in range(len(out_batch)):
-                if out_batch[tokenIdx] == -1:
-                    tokens[i][tokenIdx][0].token_id = n # The EOS token should always be the largest one
-                else:
-                    tokens[i][tokenIdx][0].token_id = out_batch[tokenIdx]
 
-        # return processed_tokens
+        for batch in tokens:
+            for seg_or_action in batch:
+                if isinstance(seg_or_action, Action):
+                    segments = seg_or_action.get_all_segments()
+                else:
+                    segments = [seg_or_action]
+
+                for segment in segments:
+                    for tokenIdx in range(len(segment.tokens)):
+                        if segment.tokens[tokenIdx] == -1:
+                            segment.tokens[tokenIdx] = n
+
     def forward(self, tokens, **kwargs):
         backup_embeds = self.transformer.get_input_embeddings()
         device = backup_embeds.weight.device
@@ -153,15 +174,10 @@ class SD1FunClipModel(torch.nn.Module):
     def load_sd(self, sd):
         return self.transformer.load_state_dict(sd, strict=False)
 
-    def encode_token_weights(self, token_dicts: list[list[tuple[TokenDict]]], **kwargs):
-        to_encode = [list(
-            map(
-                lambda id: (TokenDict(token_id=id, weight=1.0, nudge_id=None),),
-                self.empty_tokens[0]
-            )
-        )]
-        for x in token_dicts:
-            to_encode.append(x)
+    def encode_token_weights(self, prompt_segments: list[list[Union[PromptSegment | Action]]], **kwargs):
+        to_encode = [[PromptSegment(text="_Empty Batch_", tokens=self.empty_tokens[0])]]
+        for batch in prompt_segments:
+            to_encode.append(batch)
 
         out, pooled = self.encode(to_encode, **kwargs)
         z_empty = out[0:1]
@@ -173,10 +189,10 @@ class SD1FunClipModel(torch.nn.Module):
         output = []
         for k in range(1, out.shape[0]):
             z = out[k:k + 1]
-            for i in range(len(z)):
-                for j in range(len(z[i])):
-                    weight = token_dicts[k - 1][j][0].weight
-                    z[i][j] = (z[i][j] - z_empty[0][j]) * weight + z_empty[0][j]
+            # for i in range(len(z)):
+            #     for j in range(len(z[i])):
+            #         weight = token_dicts[k - 1][j][0].weight
+            #         z[i][j] = (z[i][j] - z_empty[0][j]) * weight + z_empty[0][j]
             output.append(z)
 
         if (len(output) == 0):

@@ -1,5 +1,8 @@
 from typing import Callable, Union
 
+import torch
+from torch.nn import Embedding
+
 from comfy.sd1_clip import SD1Tokenizer
 from custom_nodes.ClipStuff.lib.actions.base import Action, PromptSegment
 
@@ -37,6 +40,54 @@ class ArithAction(Action):
         out += "\n" + "\t" * (depth - 1) + ")"
         return out
 
+    def token_length(self):
+        # ArithAction modifies the embeddings of the base segment, so the length is the length of the base segment
+        if isinstance(self.base_segment, Action):
+            return self.base_segment.token_length()
+
+        return len(self.base_segment.tokens)
+
+
+    def get_all_segments(self):
+        segments = []
+        if isinstance(self.base_segment, Action):
+            segments += self.base_segment.get_all_segments()
+        else:
+            segments.append(self.base_segment)
+
+        for op_key, ops in self.ops.items():
+            for op in ops:
+                if isinstance(op, Action):
+                    segments += op.get_all_segments()
+                else:
+                    segments.append(op)
+
+        return segments
+
+    def get_result(self, embedding_module: Embedding):
+        if isinstance(self.base_segment, Action):
+            base_segment_result = self.base_segment.get_result(embedding_module)
+        else:
+            base_segment_result = self.base_segment.get_embeddings(embedding_module)
+
+        for op_key, ops in self.ops.items():
+            for op in ops:
+                if isinstance(op, Action):
+                    op_result = op.get_result(embedding_module)
+                else:
+                    op_result = op.get_embeddings(embedding_module)
+
+
+                if op_result.shape[1] > base_segment_result.shape[1]:
+                    print('[WARN] ArithAction: op_result.shape[1] > base_segment_result.shape[1] - averaging op_result')
+                    op_result = torch.mean(op_result, dim=1, keepdim=True)
+
+                if op_key == "+":
+                    base_segment_result.add(op_result)
+                elif op_key == "-":
+                    base_segment_result.subtract(op_result)
+
+        return base_segment_result
 
     @classmethod
     def parse_segment(
