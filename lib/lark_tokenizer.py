@@ -1,57 +1,5 @@
 from lark import Lark, Tree, Token, Transformer
 
-# Define the grammar
-# grammar = """
-# start: token*
-#
-# token: EMBEDDING
-#      | function
-#      | arith_action
-#      | nudge_action
-#      | OPERATOR
-#      | TEXT
-#
-# EMBEDDING: "embedding:" /[^\s]+/ WS?
-# function: FUNC_NAME "(" [token ("," token)*] ")" WS?
-# arith_action: "<" WS? action_content* ">" WS?
-# nudge_action: "[" WS? action_content* "]" WS?
-# action_content: EMBEDDING (":" EMBEDDING ":" NUMBER)? WS?
-# OPERATOR: ("->" | "+" | "-") WS?
-# TEXT: /[a-zA-Z_]\w*/ WS?
-# FUNC_NAME: /[a-z_]\w*/
-#
-# NUMBER: /\d+(\.\d+)?/
-#
-# %import common.WS
-# %ignore WS
-# """
-
-
-# """
-# start: token*
-#
-# token: EMBEDDING
-#     //  | function
-#      | arith_action
-#     //  | nudge_action
-#     //  | OPERATOR
-#      | TEXT
-#
-# EMBEDDING: "embedding:" /[^\s]+/ WS?
-# // function: FUNC_NAME "(" [token ("," token)*] ")" WS?
-# arith_action: "<" arith_content* ">" WS?
-# // nudge_action: "[" WS? action_content* "]" WS?
-# arith_content: token ":" (arith_ops token)* WS?
-# arith_ops: ("+" | "-")
-# // OPERATOR: ("->" | "+" | "-") WS?
-# TEXT: /[a-zA-Z_]\w*/ WS?
-# // FUNC_NAME: /[a-z_]\w*/
-#
-# NUMBER: /\d+(\.\d+)?/
-#
-# %import common.WS
-# %ignore WS"""
-
 grammar = """
 ?start: item+
 
