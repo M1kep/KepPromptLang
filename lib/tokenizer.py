@@ -5,7 +5,7 @@ from custom_nodes.ClipStuff.lib.actions.base import (
 
 from custom_nodes.ClipStuff.lib.parser import PromptParser
 from custom_nodes.ClipStuff.lib.parser.transformer import PromptTransformer
-from custom_nodes.ClipStuff.lib.prompt_segment import PromptSegment
+from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 
 class TokenDict:
     def __init__(self,
