@@ -5,7 +5,7 @@ from custom_nodes.ClipStuff.lib.actions.base import Action, build_prompt_segment
 from custom_nodes.ClipStuff.lib.actions.neg import NegAction
 from custom_nodes.ClipStuff.lib.actions.norm import NormAction
 from custom_nodes.ClipStuff.lib.actions.sum import SumAction
-from custom_nodes.ClipStuff.lib.prompt_segment import PromptSegment
+from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 
 
 class PromptTransformer(Transformer):

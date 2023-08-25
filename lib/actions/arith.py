@@ -4,7 +4,7 @@ import torch
 from torch.nn import Embedding
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.prompt_segment import PromptSegment
+from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 from .base import Action
 from .types import SegOrAction
 

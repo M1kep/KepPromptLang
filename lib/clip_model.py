@@ -10,7 +10,7 @@ import comfy.ops
 from custom_nodes.ClipStuff.lib.actions.base import Action
 from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
 from custom_nodes.ClipStuff.lib.fun_clip_stuff import MyCLIPTextModel
-from custom_nodes.ClipStuff.lib.prompt_segment import PromptSegment
+from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 
 
 class SD1FunClipModel(torch.nn.Module):

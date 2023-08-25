@@ -6,6 +6,7 @@ from torch import Tensor
 from torch.nn import Embedding
 
 from comfy.sd1_clip import SD1Tokenizer
+from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 
 
 class Action(ABC):
