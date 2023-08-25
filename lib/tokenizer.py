@@ -7,26 +7,6 @@ from custom_nodes.ClipStuff.lib.parser import PromptParser
 from custom_nodes.ClipStuff.lib.parser.transformer import PromptTransformer
 from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 
-class TokenDict:
-    def __init__(self,
-                 token_id: int,
-                 weight: float = None,
-                 nudge_id=None, nudge_weight=None, nudge_start: int = None, nudge_end: int = None,
-                 arith_ops: dict[str, list[str]] = None):
-        if weight is None:
-            self.weight = 1.0
-        else:
-            self.weight = weight
-
-        self.token_id = token_id
-        self.nudge_id = nudge_id
-        self.nudge_weight = nudge_weight
-        self.nudge_index_start = nudge_start
-        self.nudge_index_stop = nudge_end
-
-        self.arith_ops = arith_ops
-
-
 class MyTokenizer(SD1Tokenizer):
     def __init__(self, tokenizer_path=None, max_length=77, pad_with_end=True, embedding_directory=None, embedding_size=768, embedding_key='clip_l', special_tokens=None):
         super().__init__(tokenizer_path, max_length, pad_with_end, embedding_directory, embedding_size, embedding_key)

@@ -8,7 +8,6 @@ from transformers.models.clip.modeling_clip import _expand_mask, CLIPTextEmbeddi
 
 from custom_nodes.ClipStuff.lib.action.base import Action
 from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
-from custom_nodes.ClipStuff.lib.tokenizer import TokenDict
 
 def slerp(val, low, high):
     low = low.unsqueeze(0)
@@ -26,12 +25,14 @@ class MyCLIPTextEmbeddings(CLIPTextEmbeddings):
 
     def forward(
             self,
-            input_dicts: Optional[list[list[tuple[TokenDict]]]] = None,
+            input_dicts: Optional[list[list[SegOrAction]]] = None,
             input_ids: Optional[torch.LongTensor] = None,
             position_ids: Optional[torch.LongTensor] = None,
             inputs_embeds: Optional[torch.FloatTensor] = None,
     ) -> torch.Tensor:
 
+        if input_dicts is None:
+            raise ValueError("You have to specify input_dicts")
 
         batches = []
         for batch_idx, batch in enumerate(input_dicts):
@@ -181,7 +182,7 @@ class MyCLIPTextModel(CLIPTextModel):
 
     def forward(
             self,
-            input_ids: Optional[list[list[tuple[TokenDict]]]] = None,
+            input_ids: Optional[list[list[SegOrAction]]] = None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.Tensor] = None,
             output_attentions: Optional[bool] = None,
