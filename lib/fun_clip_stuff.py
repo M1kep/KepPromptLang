@@ -1,7 +1,6 @@
 from typing import Optional, Tuple, Union
 
 import torch
-from torch import device
 from transformers import CLIPTextConfig
 from transformers.modeling_outputs import BaseModelOutputWithPooling
 from transformers.models.clip.modeling_clip import _expand_mask, CLIPTextEmbeddings, CLIPTextTransformer, \
