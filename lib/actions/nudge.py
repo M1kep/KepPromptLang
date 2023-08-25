@@ -1,10 +1,11 @@
-from typing import Optional, Union, Callable
+from typing import Optional, Callable
 
 import torch
 from torch.nn import Embedding
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.actions.base import Action, PromptSegment
+from .base import Action
+from .types import SegOrAction
 
 
 class NudgeAction(Action):
@@ -53,8 +54,8 @@ class NudgeAction(Action):
 
     def __init__(
         self,
-        base_segment: PromptSegment | Action,
-        target: Union[PromptSegment, Action],
+        base_segment: SegOrAction,
+        target: SegOrAction,
         weight: Optional[float] = None,
     ):
         self.base_segment = base_segment
@@ -87,7 +88,7 @@ class NudgeAction(Action):
         tokens: list[str],
         start_chars: list[str],
         end_chars: list[str],
-        parent_parser: Callable[[list[str], SD1Tokenizer], PromptSegment | Action],
+        parent_parser: Callable[[list[str], SD1Tokenizer], SegOrAction],
         tokenizer: SD1Tokenizer,
     ) -> Action:
         """

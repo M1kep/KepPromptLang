@@ -4,14 +4,16 @@ import torch
 from torch.nn import Embedding
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.actions.base import Action, PromptSegment
+from custom_nodes.ClipStuff.lib.prompt_segment import PromptSegment
+from .base import Action
+from .types import SegOrAction
 
 
 class ArithAction(Action):
     START_CHAR = "<"
     END_CHAR = ">"
 
-    def __init__(self, base_segment: PromptSegment | Action, ops: dict[str, list[PromptSegment | Action]]):
+    def __init__(self, base_segment: SegOrAction, ops: dict[str, list[SegOrAction]]):
         self.base_segment = base_segment
         self.ops = ops
 
@@ -95,7 +97,7 @@ class ArithAction(Action):
         tokens: list[str],
         start_chars: list[str],
         end_chars: list[str],
-        parent_parser: Callable[[list[str], SD1Tokenizer], Union[PromptSegment, 'Action']],
+        parent_parser: Callable[[list[str], SD1Tokenizer], SegOrAction],
         tokenizer: SD1Tokenizer,
     ) -> Action:
         """

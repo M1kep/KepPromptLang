@@ -7,7 +7,8 @@ from transformers.modeling_outputs import BaseModelOutputWithPooling
 from transformers.models.clip.modeling_clip import _expand_mask, CLIPTextEmbeddings, CLIPTextTransformer, \
     CLIPTextModel
 
-from custom_nodes.ClipStuff.lib.actions.base import PromptSegment, Action
+from custom_nodes.ClipStuff.lib.actions.base import Action
+from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
 from custom_nodes.ClipStuff.lib.tokenizer import TokenDict
 
 def slerp(val, low, high):
@@ -91,7 +92,7 @@ class MyCLIPTextTransformer(CLIPTextTransformer):
 
     def forward(
             self,
-            input_ids: Optional[list[list[PromptSegment | Action]]] = None,
+            input_ids: Optional[list[list[SegOrAction]]] = None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.Tensor] = None,
             output_attentions: Optional[bool] = None,
