@@ -2,6 +2,7 @@ from lark import Transformer, Token
 
 from comfy.sd1_clip import SD1Tokenizer
 from custom_nodes.ClipStuff.lib.action.base import Action
+from custom_nodes.ClipStuff.lib.actions.diff import DiffAction
 from custom_nodes.ClipStuff.lib.parser.utils import build_prompt_segment
 from custom_nodes.ClipStuff.lib.actions.neg import NegAction
 from custom_nodes.ClipStuff.lib.actions.norm import NormAction
@@ -40,16 +41,21 @@ class PromptTransformer(Transformer):
             else:
                 raise Exception("Unknown item type: " + str(item.type))
 
+    def arg(self, items):
+        return items
+
     def embedding(self, items):
         return build_prompt_segment(f'{self.tokenizer.embedding_identifier}{items[0]}', self.tokenizer)
 
     def function(self, items):
         for item in items:
             if item.data == 'sum_function':
-                return SumAction(item.children[0], item.children[1:])
+                return SumAction(item.children[0][:], item.children[1:][:])
             elif item.data == 'neg_function':
-                return NegAction(item.children)
+                return NegAction(item.children[0])
             elif item.data == 'norm_function':
-                return NormAction(item.children)
+                return NormAction(item.children[0])
+            elif item.data == 'diff_function':
+                return DiffAction(item.children[0][:], item.children[1:][:])
             else:
                 raise Exception("Unknown function type: " + str(item.data))
