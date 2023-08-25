@@ -4,7 +4,7 @@ import torch
 from torch.nn import Embedding
 
 from comfy.sd1_clip import SD1Tokenizer
-from .base import Action
+from custom_nodes.ClipStuff.lib.action.base import Action
 from .types import SegOrAction
 
 

@@ -7,7 +7,7 @@ from transformers import CLIPTextConfig, modeling_utils
 
 from comfy import model_management
 import comfy.ops
-from custom_nodes.ClipStuff.lib.actions.base import Action
+from custom_nodes.ClipStuff.lib.action.base import Action
 from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
 from custom_nodes.ClipStuff.lib.fun_clip_stuff import MyCLIPTextModel
 from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment

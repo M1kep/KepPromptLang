@@ -1,7 +1,7 @@
 from lark import Transformer, Token
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.actions.base import Action, build_prompt_segment
+from custom_nodes.ClipStuff.lib.action.base import Action
 from custom_nodes.ClipStuff.lib.actions.neg import NegAction
 from custom_nodes.ClipStuff.lib.actions.norm import NormAction
 from custom_nodes.ClipStuff.lib.actions.sum import SumAction
