@@ -13,7 +13,7 @@ from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 
 
 # Methods with no comment can be assumed to be the same as comfy.sd1_clip.SD1ClipModel
-class SD1FunClipModel(torch.nn.Module):
+class PromptLangClipModel(torch.nn.Module):
     """Uses the CLIP transformer encoder for text (from huggingface)"""
     LAYERS = [
         "last",
