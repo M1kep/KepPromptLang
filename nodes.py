@@ -6,7 +6,7 @@ from PIL import Image
 import folder_paths
 import comfy.sd
 import comfy.ops
-from custom_nodes.ClipStuff.lib.clip_model import SD1FunClipModel
+from custom_nodes.ClipStuff.lib.clip_model import PromptLangClipModel
 
 from custom_nodes.ClipStuff.lib.tokenizer import PromptLangTokenizer
 
@@ -33,7 +33,7 @@ class SpecialClipLoader:
     def load_clip(source_clip):
         clip_target = EmptyClass()
         clip_target.params = {}
-        clip_target.clip = SD1FunClipModel
+        clip_target.clip = PromptLangClipModel
         clip_target.tokenizer = PromptLangTokenizer
 
         clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.embedding_directory)
