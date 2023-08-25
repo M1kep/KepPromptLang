@@ -131,7 +131,7 @@ class SD1FunClipModel(torch.nn.Module):
                         if segment.tokens[tokenIdx] == -1:
                             segment.tokens[tokenIdx] = n
 
-    def forward(self, tokens, **kwargs):
+    def forward(self, tokens):
         backup_embeds = self.transformer.get_input_embeddings()
         device = backup_embeds.weight.device
         self.set_up_textual_embeddings(tokens, backup_embeds)
@@ -142,16 +142,8 @@ class SD1FunClipModel(torch.nn.Module):
         else:
             precision_scope = contextlib.nullcontext
 
-
-        if (kwargs.get("position_ids", None) is not None):
-            position_ids = torch.LongTensor(kwargs["position_ids"]).to(device)
-        else:
-            position_ids = None
-
-
         with precision_scope(model_management.get_autocast_device(device)):
-            outputs = self.transformer(input_ids=tokens, output_hidden_states=self.layer == "hidden",
-                                       position_ids=position_ids)
+            outputs = self.transformer(input_ids=tokens, output_hidden_states=self.layer == "hidden")
             self.transformer.set_input_embeddings(backup_embeds)
 
             if self.layer == "last":
@@ -168,8 +160,8 @@ class SD1FunClipModel(torch.nn.Module):
                 pooled_output = pooled_output.to(self.text_projection.device) @ self.text_projection
         return z.float(), pooled_output.float()
 
-    def encode(self, tokens, **kwargs):
-        return self(tokens, **kwargs)
+    def encode(self, tokens):
+        return self(tokens)
 
     def load_sd(self, sd):
         return self.transformer.load_state_dict(sd, strict=False)
@@ -179,7 +171,7 @@ class SD1FunClipModel(torch.nn.Module):
         for batch in prompt_segments:
             to_encode.append(batch)
 
-        out, pooled = self.encode(to_encode, **kwargs)
+        out, pooled = self.encode(to_encode)
         z_empty = out[0:1]
         if pooled.shape[0] > 1:
             first_pooled = pooled[1:2]
