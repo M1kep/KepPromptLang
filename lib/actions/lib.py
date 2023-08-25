@@ -1,5 +1,5 @@
-from custom_nodes.ClipStuff.lib.actions import ALL_START_CHARS, ALL_END_CHARS
-from custom_nodes.ClipStuff.lib.actions.base import Action
+from .all_actions import ALL_START_CHARS, ALL_END_CHARS
+from .base import Action
 
 
 def is_action_segment(action_class: Action.__class__, segment: str):

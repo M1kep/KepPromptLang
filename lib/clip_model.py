@@ -7,10 +7,11 @@ from transformers import CLIPTextConfig, modeling_utils
 
 from comfy import model_management
 import comfy.ops
-from comfy.sd import CLIP
-from custom_nodes.ClipStuff.lib.actions.base import PromptSegment, Action
+from custom_nodes.ClipStuff.lib.actions.base import Action
+from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
 from custom_nodes.ClipStuff.lib.fun_clip_stuff import MyCLIPTextModel
-from custom_nodes.ClipStuff.lib.tokenizer import TokenDict
+from custom_nodes.ClipStuff.lib.prompt_segment import PromptSegment
+
 
 class SD1FunClipModel(torch.nn.Module):
     """Uses the CLIP transformer encoder for text (from huggingface)"""
@@ -68,7 +69,7 @@ class SD1FunClipModel(torch.nn.Module):
         self.layer = self.layer_default[0]
         self.layer_idx = self.layer_default[1]
 
-    def set_up_textual_embeddings(self, tokens: list[list[PromptSegment | Action]], current_embeds):
+    def set_up_textual_embeddings(self, tokens: list[list[SegOrAction]], current_embeds):
         next_new_token = token_dict_size = current_embeds.weight.shape[0] - 1
         embedding_weights = []
 
@@ -174,7 +175,7 @@ class SD1FunClipModel(torch.nn.Module):
     def load_sd(self, sd):
         return self.transformer.load_state_dict(sd, strict=False)
 
-    def encode_token_weights(self, prompt_segments: list[list[Union[PromptSegment | Action]]], **kwargs):
+    def encode_token_weights(self, prompt_segments: list[list[SegOrAction]], **kwargs):
         to_encode = [[PromptSegment(text="_Empty Batch_", tokens=self.empty_tokens[0])]]
         for batch in prompt_segments:
             to_encode.append(batch)

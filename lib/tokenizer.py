@@ -2,7 +2,7 @@ import re
 from typing import Union
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.actions import (
+from custom_nodes.ClipStuff.lib.actions.all_actions import (
     NudgeAction,
     ArithAction,
     ALL_START_CHARS,
@@ -11,14 +11,13 @@ from custom_nodes.ClipStuff.lib.actions import (
 )
 from custom_nodes.ClipStuff.lib.actions.base import (
     Action,
-    PromptSegment,
     build_prompt_segment,
 )
-from custom_nodes.ClipStuff.lib.actions.lib import (
+from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
     is_any_action_segment,
     is_action_segment,
 )
-from custom_nodes.ClipStuff.lib.actions.utils import batch_size_info
+from custom_nodes.ClipStuff.lib.prompt_segment import PromptSegment
 
 arith_action = r'(<[a-zA-Z0-9\-_]+:[a-zA-Z0-9\-_]+>)'
 
@@ -85,7 +84,7 @@ def parse_special_tokens(string) -> list[str]:
     return out
 
 
-def parse_segment_actions(string, tokenizer: SD1Tokenizer) -> list[PromptSegment | NudgeAction | ArithAction]:
+def parse_segment_actions(string, tokenizer: SD1Tokenizer) -> list[SegOrAction]:
     tokens = tokenize(string)
     parsed = parse(tokens, tokenizer)
     return parsed
