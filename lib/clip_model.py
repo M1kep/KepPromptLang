@@ -1,6 +1,5 @@
 import contextlib
 import os
-from typing import Union
 
 import torch
 from transformers import CLIPTextConfig, modeling_utils
