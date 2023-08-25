@@ -45,7 +45,7 @@ class PromptLangTokenizer(SD1Tokenizer):
                 batch_size = num_tokens + 1 # +1 for start token
                 continue
 
-            # If the segment is small enough to fit in the current batch, add it
+            # Since the segment fits in the current batch, add it
             batch.append(segment)
             batch_size += num_tokens
 
