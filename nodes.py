@@ -43,49 +43,6 @@ class SpecialClipLoader:
         return (clip,)
 
 
-class KepAdvTextEncode:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "text": ("STRING", {"multiline": True}),
-                "clip": ("CLIP",),
-                "nudge_start": ("INT", {}),
-                "nudge_end": ("INT", {}),
-                "split_newlines": ("BOOL", {"default": True}),
-            }
-        }
-
-    RETURN_TYPES = ("CONDITIONING",)
-    FUNCTION = "encode"
-    OUTPUT_IS_LIST = (True,)
-    CATEGORY = "conditioning"
-
-    @staticmethod
-    def encode(clip, text, nudge_start, nudge_end, split_newlines):
-        ret = []
-        if split_newlines:
-            prompts = text.split("\n")
-        else:
-            prompts = [text]
-
-        for prompt in prompts:
-            if prompt.strip() == "":
-                continue
-            tokens = clip.tokenizer.tokenize_with_weights(
-                text,
-                return_word_ids=False,
-                nudge_start=nudge_start,
-                nudge_end=nudge_end,
-            )
-            cond, pooled = clip.encode_from_tokens(
-                tokens, return_pooled=True, position_ids=[0] * 77
-            )
-            cond = [[cond, {"pooled_output": pooled}]]
-            ret.append(cond)
-        return (ret,)
-
-
 def tensor2img(tensor_img):
     i = 255.0 * tensor_img.cpu().numpy()
     i_np_arr = np.clip(i, 0, 255, out=i).astype(np.uint8, copy=False)
