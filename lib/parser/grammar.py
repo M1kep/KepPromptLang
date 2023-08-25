@@ -9,10 +9,14 @@ item: embedding
 function: sum_function
     | neg_function
     | norm_function
+    | diff_function
 
-sum_function: "sum(" item* ("|" item)* ")"
-neg_function: "neg(" item* ")"
-norm_function: "norm(" item* ")"
+sum_function: "sum(" arg ("|" arg)* ")"
+neg_function: "neg(" arg ")"
+norm_function: "norm(" arg ")"
+diff_function: "diff(" arg ("|" arg)* ")"
+
+arg: item+
 
 embedding: "embedding:" WORD
 
