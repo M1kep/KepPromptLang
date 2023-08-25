@@ -8,7 +8,7 @@ from comfy import model_management
 import comfy.ops
 from custom_nodes.ClipStuff.lib.action.base import Action
 from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
-from custom_nodes.ClipStuff.lib.fun_clip_stuff import MyCLIPTextModel
+from custom_nodes.ClipStuff.lib.fun_clip_stuff import PromptLangTextModel
 from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 
 
@@ -27,7 +27,7 @@ class SD1FunClipModel(torch.nn.Module):
         assert layer in self.LAYERS
         self.num_layers = 12
         if textmodel_path is not None:
-            self.transformer = MyCLIPTextModel.from_pretrained(textmodel_path)
+            self.transformer = PromptLangTextModel.from_pretrained(textmodel_path)
         else:
             if textmodel_json_config is None:
                 textmodel_json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_config.json")
@@ -35,7 +35,7 @@ class SD1FunClipModel(torch.nn.Module):
             self.num_layers = config.num_hidden_layers
             with comfy.ops.use_comfy_ops():
                 with modeling_utils.no_init_weights():
-                    self.transformer = MyCLIPTextModel(config)
+                    self.transformer = PromptLangTextModel(config)
 
         self.max_length = max_length
         if freeze:

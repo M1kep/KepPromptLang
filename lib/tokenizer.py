@@ -7,7 +7,7 @@ from custom_nodes.ClipStuff.lib.parser import PromptParser
 from custom_nodes.ClipStuff.lib.parser.transformer import PromptTransformer
 from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 
-class MyTokenizer(SD1Tokenizer):
+class PromptLangTokenizer(SD1Tokenizer):
     def __init__(self, tokenizer_path=None, max_length=77, pad_with_end=True, embedding_directory=None, embedding_size=768, embedding_key='clip_l', special_tokens=None):
         super().__init__(tokenizer_path, max_length, pad_with_end, embedding_directory, embedding_size, embedding_key)
 

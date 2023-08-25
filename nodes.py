@@ -8,7 +8,7 @@ import comfy.sd
 import comfy.ops
 from custom_nodes.ClipStuff.lib.clip_model import SD1FunClipModel
 
-from custom_nodes.ClipStuff.lib.tokenizer import MyTokenizer
+from custom_nodes.ClipStuff.lib.tokenizer import PromptLangTokenizer
 
 
 class EmptyClass:
@@ -34,7 +34,7 @@ class SpecialClipLoader:
         clip_target = EmptyClass()
         clip_target.params = {}
         clip_target.clip = SD1FunClipModel
-        clip_target.tokenizer = MyTokenizer
+        clip_target.tokenizer = PromptLangTokenizer
 
         clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.embedding_directory)
         comfy.sd.load_clip_weights(
