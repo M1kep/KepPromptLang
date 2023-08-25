@@ -36,7 +36,6 @@ class SpecialClipLoader:
         clip_target.clip = SD1FunClipModel
         clip_target.tokenizer = MyTokenizer
 
-        # TODO: Extract embedding directory from source_clip
         clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.embedding_directory)
         comfy.sd.load_clip_weights(
             clip.cond_stage_model, source_clip.cond_stage_model.state_dict()
