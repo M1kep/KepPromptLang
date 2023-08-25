@@ -49,29 +49,6 @@ class PromptLangCLIPTextEmbeddings(CLIPTextEmbeddings):
         if position_ids is None:
             position_ids = self.position_ids[:, :seq_length]
 
-        # if inputs_embeds is None:
-        #     inputs_embeds = self.token_embedding(input_ids)
-
-        # for batch_idx, batch in enumerate(input_dicts):
-        #     for token_idx, token in enumerate(batch):
-        #         if token[0].nudge_id is not None:
-        #             nudged_embed = inputs_embeds[batch_idx, token_idx][:] + self.token_embedding(torch.LongTensor([token[0].nudge_id]).to(torch.device('cpu')))[0]
-        #             if token[0].nudge_index_start is not None and token[0].nudge_index_stop is not None:
-        #                 nudge_start = token[0].nudge_index_start
-        #                 nudge_end = token[0].nudge_index_stop
-        #             else:
-        #                 nudge_start = 0
-        #                 nudge_end = 768
-        #             inputs_embeds[batch_idx, token_idx][nudge_start:nudge_end] = (slerp(token[0].nudge_weight, inputs_embeds[batch_idx, token_idx][:], nudged_embed)[0][nudge_start:nudge_end])
-        #         elif token[0].arith_ops is not None:
-        #             for op, id_list in token[0].arith_ops.items():
-        #                 if op == '+':
-        #                     for this_id in id_list:
-        #                         inputs_embeds[batch_idx, token_idx] += self.token_embedding(torch.LongTensor([this_id]).to(torch.device('cpu')))[0]
-        #                 elif op == '-':
-        #                     for this_id in id_list:
-        #                         inputs_embeds[batch_idx, token_idx] -= self.token_embedding(torch.LongTensor([this_id]).to(torch.device('cpu')))[0]
-
         embeds = []
         for batch in batches:
             if len(batch) == 1:
