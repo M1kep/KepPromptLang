@@ -7,7 +7,7 @@ from transformers.modeling_outputs import BaseModelOutputWithPooling
 from transformers.models.clip.modeling_clip import _expand_mask, CLIPTextEmbeddings, CLIPTextTransformer, \
     CLIPTextModel
 
-from custom_nodes.ClipStuff.lib.actions.base import Action
+from custom_nodes.ClipStuff.lib.action.base import Action
 from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
 from custom_nodes.ClipStuff.lib.tokenizer import TokenDict
 

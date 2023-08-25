@@ -1,5 +1,5 @@
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.actions.base import (
+from custom_nodes.ClipStuff.lib.action.base import (
     Action,
 )
 
