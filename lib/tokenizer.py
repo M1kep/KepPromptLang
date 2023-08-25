@@ -1,7 +1,5 @@
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.action.base import (
-    Action,
-)
+from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
 
 from custom_nodes.ClipStuff.lib.parser import PromptParser
 from custom_nodes.ClipStuff.lib.parser.transformer import PromptTransformer
@@ -16,7 +14,7 @@ class PromptLangTokenizer(SD1Tokenizer):
     Returns batches of segments and actions
     :return: List of list(batches) of segments and actions
     """
-    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs) -> list[list[PromptSegment | Action]]:
+    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs) -> list[list[SegOrAction]]:
         if self.pad_with_end:
             pad_token = self.end_token
         else:
