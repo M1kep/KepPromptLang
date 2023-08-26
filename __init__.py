@@ -7,3 +7,5 @@ NODE_CLASS_MAPPINGS = {
     "Build Gif": BuildGif,
     "Special CLIP Loader": SpecialClipLoader,
 }
+
+WEB_DIRECTORY = "./web/dist"
