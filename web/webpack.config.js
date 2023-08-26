@@ -59,6 +59,7 @@ module.exports = {
             }
         ]
     },
+    devtool: 'eval-source-map',
     // plugins: [
     //     new HtmlWebPackPlugin({
     //         title: 'Monaco Editor Sample'
