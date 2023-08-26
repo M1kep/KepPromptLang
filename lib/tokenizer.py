@@ -1,3 +1,5 @@
+from lark import Tree
+
 from comfy.sd1_clip import SD1Tokenizer
 from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
 
@@ -28,7 +30,11 @@ class PromptLangTokenizer(SD1Tokenizer):
         batch = [PromptSegment(text="[SOT]", tokens=[self.start_token])]
         # batched_segments.append(batch)
         batch_size = 1
-        for segment in parsed_actions.children:
+        if isinstance(parsed_actions, Tree):
+            segments_to_process = parsed_actions.children
+        else:
+            segments_to_process = [parsed_actions]
+        for segment in segments_to_process:
             num_tokens = segment.token_length()
             # determine if we're going to try and keep the tokens in a single batch
             is_large = num_tokens >= self.max_word_length
