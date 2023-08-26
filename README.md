@@ -1,5 +1,7 @@
 # ClipStuff
 ## Basic Instructions.
+Clone repo into custom_nodes folder.
+Install the requirements.txt file via pip.
 
 Pass CLIP output from Load Checkpoint into SpecialClipLoader node, then use the outputted clip with standard Clip Text Encode.
 
@@ -68,11 +70,12 @@ Here are the available functions and their usage:
    neg(embedding:body_vector)
    ```
 
-3. King - Man + Women = Queen:
+3. King - Man + Woman = Queen:
    ```
-   sum(diff(king|man)|queen)
+   sum(diff(king|man)|woman)
    ```
    or
    ```
-   sum(king|neg(man)|queen)
+   sum(king|neg(man)|woman)
+   ```
    ```
