@@ -1,4 +1,5 @@
-import {app} from "/scripts/app.js";
+// import {app} from "/scripts/app.js";
+const app = await import("/scripts/app.js")
 
 app.registerExtension({
     name: "ComfyLiterals.OperationNode",

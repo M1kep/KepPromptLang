@@ -3,9 +3,19 @@
   "scripts": {
     "build": "tsc",
     "build-watch": "tsc -w",
+    "bundle": "webpack",
     "start": "ts-node src/index.ts"
   },
   "devDependencies": {
-    "typescript": "^5.2.2"
+    "css-loader": "^6.8.1",
+    "file-loader": "^6.2.0",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.4.4",
+    "typescript": "^5.2.2",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "html-webpack-plugin": "^5.5.3"
   }
 }
