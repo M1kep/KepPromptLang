@@ -17,6 +17,25 @@ class EmptyClass:
     pass
 
 
+class MonacoPrompt:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "clip": ("CLIP",),
+                "prompt": ("MONACO",),
+            }
+        }
+
+    RETURN_TYPES = ("CONDITIONING",)
+    FUNCTION = "do_crap"
+    OUTPUT_IS_LIST = (False,)
+    CATEGORY = "conditioning"
+
+    @staticmethod
+    def do_crap(clip, prompt):
+        return (clip,)
+
 class SpecialClipLoader:
     @classmethod
     def INPUT_TYPES(cls):  # type: ignore

@@ -1051,6 +1051,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"monaco-editor@npm:^0.41.0":
+  version: 0.41.0
+  resolution: "monaco-editor@npm:0.41.0"
+  checksum: 873a8b4eb98d789dffa7509dc0875b277127f14d2a53215b7fee9c49f394d52727bd97f8700858e1f9da323988882274e7110f718cf06e457b02aa16ec32f6c4
+  languageName: node
+  linkType: hard
+
 "nanoid@npm:^3.3.6":
   version: 3.3.6
   resolution: "nanoid@npm:3.3.6"
@@ -1358,6 +1365,7 @@ __metadata:
     css-loader: ^6.8.1
     file-loader: ^6.2.0
     html-webpack-plugin: ^5.5.3
+    monaco-editor: ^0.41.0
     style-loader: ^3.3.3
     ts-loader: ^9.4.4
     typescript: ^5.2.2
