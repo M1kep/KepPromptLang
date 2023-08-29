@@ -46,6 +46,8 @@ jobs:
 #          key: ${{ runner.os }}-sd-15-checkpoint
 
       - name: Check and Download Model
+        env:
+          PYTHONUNBUFFERED: 1
         run: |
           python custom_nodes/ClipStuff/test_files/check_and_download_model.py
 
