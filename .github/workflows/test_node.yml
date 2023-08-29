@@ -1,10 +1,45 @@
-name: Test
-on:
-  workflow_dispatch:
+name: Test With Upstream
+on: [workflow_dispatch]
+
 jobs:
-  build:
+  Test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Clone Upstream
+        uses: actions/checkout@v3
+        with:
+          repository: comfyanonymous/ComfyUI
+          ref: master
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          # Version range or exact version of Python or PyPy to use, using SemVer's version range syntax. Reads from .python-version if unset.
+          python-version: '3.10'
+          # Used to specify a package manager for caching in the default directory. Supported values: pip, pipenv, poetry.
+          cache: pip
+
+      - name: Clone Node
+        uses: actions/checkout@v3
+        with:
+          ref: master
+          fetch-depth: 0
+          path: custom_nodes/ClipStuff
+
+      - name: Install Requirements
+        run: |
+          pip install -r requirements.txt
+          pip install -r custom_nodes/ClipStuff/requirements.txt
+
+      - name: Run in Background
+        run: |
+          python main.py --cpu &> server.log &
+          sleep 5
+
+      - name: Check if server is running
+        run: |
+          curl http://localhost:8188
+
       - name: Setup upterm session
         uses: lhotari/action-upterm@v1
