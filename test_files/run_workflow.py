@@ -21,14 +21,15 @@ def queue_prompt(prompt):
         return json.loads(response.read())
     except urllib.error.HTTPError as e:
         print(f"HTTP Error {e.code}: {e.reason}")
+        error_body = e.read()
         # Attempt to read and print the JSON error body
         try:
-            error_body = json.loads(e.read())
-            print(error_body)
+            json_error_body = json.loads(error_body)
+            print(json_error_body)
             raise e
         except json.JSONDecodeError:
             print("Failed to decode error response as JSON.")
-            print(e.read())
+            print(error_body)
             raise e
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
