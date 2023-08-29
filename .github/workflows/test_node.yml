@@ -52,9 +52,11 @@ jobs:
           python custom_nodes/ClipStuff/test_files/check_and_download_model.py
 
       - name: Run in Background
+        env:
+          PYTHONUNBUFFERED: 1
         run: |
           python main.py --cpu &> server.log &
-          sleep 30
+          sleep 10
 
 #      - name: Setup upterm session
 #        uses: lhotari/action-upterm@v1
