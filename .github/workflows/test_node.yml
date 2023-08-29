@@ -32,7 +32,7 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
           pip install -r custom_nodes/ClipStuff/requirements.txt
-          pip install huggingface_hub websocket
+          pip install huggingface_hub websocket-client
 
 #      - name: Cache SD Checkpoint
 #        uses: actions/cache@v3
@@ -50,8 +50,8 @@ jobs:
           python main.py --cpu &> server.log &
           sleep 10
 
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
+#      - name: Setup upterm session
+#        uses: lhotari/action-upterm@v1
 
       - name: Run Workflow
         run: |
