@@ -34,12 +34,12 @@ jobs:
           pip install -r custom_nodes/ClipStuff/requirements.txt
           pip install huggingface_hub websocket
 
-      - name: Cache SD Checkpoint
-        uses: actions/cache@v3
-        with:
-          path: |
-            models/checkpoints
-          key: ${{ runner.os }}-sd-15-checkpoint
+#      - name: Cache SD Checkpoint
+#        uses: actions/cache@v3
+#        with:
+#          path: |
+#            models/checkpoints
+#          key: ${{ runner.os }}-sd-15-checkpoint
 
       - name: Check and Download Model
         run: |
