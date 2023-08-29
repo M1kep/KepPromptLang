@@ -28,6 +28,7 @@ def queue_prompt(prompt):
             raise e
         except json.JSONDecodeError:
             print("Failed to decode error response as JSON.")
+            print(e.read())
             raise e
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
