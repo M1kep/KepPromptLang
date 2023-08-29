@@ -1,5 +1,6 @@
 #This is an example that uses the websockets api to know when a prompt execution is done
 #Once the prompt execution is done it downloads the images using the /history endpoint
+import os
 
 import websocket #NOTE: websocket-client (https://github.com/websocket-client/websocket-client)
 import uuid
@@ -53,8 +54,9 @@ def get_images(ws, prompt):
 
     return output_images
 
-# Load json from file
-prompt = json.load(open("./workflow_api.json"))
+# Load json from file relative to this script
+prompt = json.load(open(os.path.join(__file__, "workflow_api.json")))
+
 #set the text prompt for our positive CLIPTextEncode
 # prompt["6"]["inputs"]["text"] = "masterpiece best quality man"
 
@@ -69,7 +71,8 @@ while True:
         print(message)
         if message["type"] == "executing":
             data = message["data"]
-            if data["node"] is None and data["prompt_id"] == prompt_id:
+            if data["node"] is None:
+                print("Execution is done")
                 break  # Execution is done
 
 # images = get_images(ws, prompt)
