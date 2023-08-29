@@ -15,7 +15,23 @@ def queue_prompt(prompt):
     p = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(p).encode('utf-8')
     req =  urllib.request.Request("http://{}/prompt".format(server_address), data=data)
-    return json.loads(urllib.request.urlopen(req).read())
+
+    try:
+        response = urllib.request.urlopen(req)
+        return json.loads(response.read())
+    except urllib.error.HTTPError as e:
+        print(f"HTTP Error {e.code}: {e.reason}")
+        # Attempt to read and print the JSON error body
+        try:
+            error_body = json.loads(e.read())
+            print(error_body)
+            raise e
+        except json.JSONDecodeError:
+            print("Failed to decode error response as JSON.")
+            raise e
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        raise e
 
 def get_image(filename, subfolder, folder_type):
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
