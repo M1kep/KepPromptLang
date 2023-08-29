@@ -54,7 +54,7 @@ jobs:
       - name: Run in Background
         run: |
           python main.py --cpu &> server.log &
-          sleep 10
+          sleep 30
 
 #      - name: Setup upterm session
 #        uses: lhotari/action-upterm@v1
