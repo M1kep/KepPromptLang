@@ -10,7 +10,7 @@ from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 class Action(ABC):
     @property
     @abstractmethod
-    def chars(self) -> list[str] | None:
+    def chars(self) -> Union[list[str], None]:
         pass
 
     @property
@@ -66,7 +66,7 @@ class SingleArgAction(Action, ABC):
                 segments.append(seg_or_action)
         return segments
 
-    def __init__(self, arg: list[PromptSegment | Action]):
+    def __init__(self, arg: list[Union[PromptSegment, Action]]):
         # TODO: Target is a list now... what does this mean for us..
         self.arg = arg
 
@@ -93,7 +93,7 @@ class MultiArgAction(Action, ABC):
 
     def __init__(
             self,
-            base_segment: list[PromptSegment | Action],
+            base_segment: list[Union[PromptSegment, Action]],
             args: list[list[Union[PromptSegment, Action]]],
     ):
         self.base_segment = base_segment

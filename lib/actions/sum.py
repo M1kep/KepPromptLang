@@ -15,7 +15,7 @@ class SumAction(Action):
 
     def __init__(
         self,
-        base_segment: list[PromptSegment | Action],
+        base_segment: list[Union[PromptSegment, Action]],
         args: list[list[Union[PromptSegment, Action]]],
     ):
         self.base_segment = base_segment
