@@ -84,12 +84,15 @@ while True:
     out = ws.recv()
     if isinstance(out, str):
         message = json.loads(out)
-        print(message)
-        if message["type"] == "executing":
-            data = message["data"]
-            if data["node"] is None:
-                print("Execution is done")
-                break  # Execution is done
+        # print(message)
+        if message["type"] == "executing" and message["data"]["node"] is None:
+            print("Execution is done")
+            break
+
+        if message["type"] == "execution_error":
+            print("Execution error")
+            print(json.dumps(message["data"], indent=4))
+            raise Exception("Execution error")
 
 # images = get_images(ws, prompt)
 
