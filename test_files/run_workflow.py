@@ -53,141 +53,33 @@ def get_images(ws, prompt):
 
     return output_images
 
-prompt_text = """
-{
-  "3": {
-    "inputs": {
-      "seed": 702552599649807,
-      "steps": [
-        "10",
-        0
-      ],
-      "cfg": 8,
-      "sampler_name": "euler",
-      "scheduler": "normal",
-      "denoise": 1,
-      "model": [
-        "4",
-        0
-      ],
-      "positive": [
-        "6",
-        0
-      ],
-      "negative": [
-        "7",
-        0
-      ],
-      "latent_image": [
-        "5",
-        0
-      ]
-    },
-    "class_type": "KSampler"
-  },
-  "4": {
-    "inputs": {
-      "ckpt_name": "realisticVisionV13_v13.safetensors"
-    },
-    "class_type": "CheckpointLoaderSimple"
-  },
-  "5": {
-    "inputs": {
-      "width": 512,
-      "height": 512,
-      "batch_size": 1
-    },
-    "class_type": "EmptyLatentImage"
-  },
-  "6": {
-    "inputs": {
-      "text": "beautiful scenery nature glass bottle landscape, , purple galaxy bottle,",
-      "clip": [
-        "4",
-        1
-      ]
-    },
-    "class_type": "CLIPTextEncode"
-  },
-  "7": {
-    "inputs": {
-      "text": "text, watermark",
-      "clip": [
-        "4",
-        1
-      ]
-    },
-    "class_type": "CLIPTextEncode"
-  },
-  "8": {
-    "inputs": {
-      "samples": [
-        "3",
-        0
-      ],
-      "vae": [
-        "4",
-        2
-      ]
-    },
-    "class_type": "VAEDecode"
-  },
-  "9": {
-    "inputs": {
-      "filename_prefix": "ComfyUI",
-      "images": [
-        "8",
-        0
-      ]
-    },
-    "class_type": "SaveImage"
-  },
-  "10": {
-    "inputs": {
-      "expression": "a + b ",
-      "a": [
-        "11",
-        0
-      ],
-      "b": [
-        "12",
-        0
-      ]
-    },
-    "class_type": "MathExpression|pysssss"
-  },
-  "11": {
-    "inputs": {
-      "Number": "5"
-    },
-    "class_type": "Int"
-  },
-  "12": {
-    "inputs": {
-      "Number": "5"
-    },
-    "class_type": "Int"
-  }
-}
-"""
-
-prompt = json.loads(prompt_text)
+# Load json from file
+prompt = json.load(open("./workflow_api.json"))
 #set the text prompt for our positive CLIPTextEncode
 # prompt["6"]["inputs"]["text"] = "masterpiece best quality man"
 
 #set the seed for our KSampler node
-prompt["3"]["inputs"]["seed"] = 5
 print(queue_prompt(prompt))
 ws = websocket.WebSocket()
 ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))
-images = get_images(ws, prompt)
+while True:
+    out = ws.recv()
+    if isinstance(out, str):
+        message = json.loads(out)
+        print(message)
+        if message["type"] == "executing":
+            data = message["data"]
+            if data["node"] is None and data["prompt_id"] == prompt_id:
+                break  # Execution is done
+
+# images = get_images(ws, prompt)
 
 #Commented out code to display the output images:
 
-for node_id in images:
-    for image_data in images[node_id]:
-        from PIL import Image
-        import io
-        image = Image.open(io.BytesIO(image_data))
-        image.show()
+# for node_id in images:
+#     for image_data in images[node_id]:
+#         from PIL import Image
+#         import io
+#         image = Image.open(io.BytesIO(image_data))
+#         image.show()
 
