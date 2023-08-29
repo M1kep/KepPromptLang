@@ -55,7 +55,7 @@ def get_images(ws, prompt):
     return output_images
 
 # Load json from file relative to this script
-prompt = json.load(open(os.path.join(__file__, "workflow_api.json")))
+prompt = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow_api.json")))
 
 #set the text prompt for our positive CLIPTextEncode
 # prompt["6"]["inputs"]["text"] = "masterpiece best quality man"
