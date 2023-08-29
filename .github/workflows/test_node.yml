@@ -50,9 +50,10 @@ jobs:
           python main.py --cpu &> server.log &
           sleep 10
 
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
+
       - name: Run Workflow
         run: |
           python custom_nodes/ClipStuff/test_files/run_workflow.py
 
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
