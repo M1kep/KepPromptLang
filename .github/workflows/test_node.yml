@@ -61,3 +61,10 @@ jobs:
         run: |
           python custom_nodes/ClipStuff/test_files/run_workflow.py
 
+      - name: Upload Comfy Server Log
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+            name: comfy-server-log-${{ matrix.python-version }}
+            path: server.log
+
