@@ -23,7 +23,7 @@ class PromptLangClipModel(torch.nn.Module):
 
     def __init__(self, version="openai/clip-vit-large-patch14", device="cpu", max_length=77,
                  freeze=True, layer="last", layer_idx=None, textmodel_json_config=None,
-                 textmodel_path=None):  # clip-vit-base-patch32
+                 textmodel_path=None, dtype=None):  # clip-vit-base-patch32
         super().__init__()
         assert layer in self.LAYERS
         self.num_layers = 12
@@ -38,18 +38,22 @@ class PromptLangClipModel(torch.nn.Module):
                 textmodel_json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_config.json")
             config = CLIPTextConfig.from_json_file(textmodel_json_config)
             self.num_layers = config.num_hidden_layers
-            with comfy.ops.use_comfy_ops():
+            with comfy.ops.use_comfy_ops(device, dtype):
                 with modeling_utils.no_init_weights():
                     # Our transformer
                     self.transformer = PromptLangTextModel(config)
 
+        if dtype is not None:
+            self.transformer.to(dtype)
         self.max_length = max_length
         if freeze:
             self.freeze()
         self.layer = layer
         self.layer_idx = None
         self.empty_tokens = [[49406] + [49407] * 76]
-        self.text_projection = None
+        self.text_projection = torch.nn.Parameter(torch.eye(self.transformer.get_input_embeddings().weight.shape[1]))
+        self.logit_scale = torch.nn.Parameter(torch.tensor(4.6055))
+
         self.layer_norm_hidden_state = True
         if layer == "hidden":
             assert layer_idx is not None
@@ -165,13 +169,17 @@ class PromptLangClipModel(torch.nn.Module):
 
             pooled_output = outputs.pooler_output
             if self.text_projection is not None:
-                pooled_output = pooled_output.to(self.text_projection.device) @ self.text_projection
+                pooled_output = pooled_output.float().to(self.text_projection.device) @ self.text_projection.float()
         return z.float(), pooled_output.float()
 
     def encode(self, tokens):
         return self(tokens)
 
     def load_sd(self, sd):
+        if "text_projection" in sd:
+            self.text_projection[:] = sd.pop("text_projection")
+        if "text_projection.weight" in sd:
+            self.text_projection[:] = sd.pop("text_projection.weight").transpose(0, 1)
         return self.transformer.load_state_dict(sd, strict=False)
 
     # Changed from comfy.sd1_clip.ClipTokenWeightEncoder
