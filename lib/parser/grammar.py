@@ -16,7 +16,7 @@ sum_function: "sum(" arg ("|" arg)* ")"
 neg_function: "neg(" arg ")"
 norm_function: "norm(" arg ")"
 diff_function: "diff(" arg ("|" arg)* ")"
-rand_function: "rand(" arg ")"
+rand_function: "rand(" arg ["|" arg "|" arg] ")"
 
 arg: item+
 

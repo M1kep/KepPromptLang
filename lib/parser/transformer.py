@@ -61,6 +61,6 @@ class PromptTransformer(Transformer):
             elif item.data == 'diff_function':
                 return DiffAction(item.children[0][:], item.children[1:][:])
             elif item.data == 'rand_function':
-                return RandAction(item.children[0])
+                return RandAction(item.children)
             else:
                 raise Exception("Unknown function type: " + str(item.data))
