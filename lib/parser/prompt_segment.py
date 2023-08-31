@@ -17,8 +17,7 @@ class PromptSegment:
         return len(self.tokens)
 
     def get_embeddings(self, embedding_module: Embedding) -> Tensor:
-        # TODO: Get properly get the device...
-        tensors = torch.LongTensor(self.tokens).to(torch.device('cuda'))
+        tensors = torch.LongTensor(self.tokens).to(embedding_module.weight.device)
         unsqueezed_tensors = tensors.unsqueeze(0)
         return embedding_module(unsqueezed_tensors)
 
