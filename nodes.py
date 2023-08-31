@@ -1,4 +1,5 @@
 import random
+from typing import Union, List
 
 import numpy as np
 from PIL import Image
@@ -77,7 +78,7 @@ class BuildGif:
     CATEGORY = "List Stuff"
 
     @staticmethod
-    def build_gif(images: list, split_every: list[int], output_mode: str):
+    def build_gif(images: list, split_every: List[int], output_mode: str):
         print("Build GIF called!")
         print(f"{type(images)}")
 

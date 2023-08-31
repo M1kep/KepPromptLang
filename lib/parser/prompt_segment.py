@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 
 import torch
 from torch import Tensor
@@ -6,7 +6,7 @@ from torch.nn import Embedding
 
 
 class PromptSegment:
-    def __init__(self, text: str, tokens: list[Union[int, Tensor]]):
+    def __init__(self, text: str, tokens: List[Union[int, Tensor]]):
         self.text = text
         self.tokens = tokens
 

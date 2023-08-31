@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 
 import torch
 from torch.nn import Embedding
@@ -15,8 +15,8 @@ class SumAction(Action):
 
     def __init__(
         self,
-        base_segment: list[Union[PromptSegment, Action]],
-        args: list[list[Union[PromptSegment, Action]]],
+        base_segment: List[Union[PromptSegment, Action]],
+        args: List[List[Union[PromptSegment, Action]]],
     ):
         self.base_segment = base_segment
         self.args = args
@@ -25,7 +25,7 @@ class SumAction(Action):
         # Sum adds to the embeddings of the base segment, so the length is the length of the base segment
         return sum(seg_or_action.token_length() for seg_or_action in self.base_segment)
 
-    def get_all_segments(self) -> list[PromptSegment]:
+    def get_all_segments(self) -> List[PromptSegment]:
         segments = []
         for seg_or_action in self.base_segment:
             if isinstance(seg_or_action, Action):

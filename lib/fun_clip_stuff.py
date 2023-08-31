@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, List
 
 import torch
 from transformers import CLIPTextConfig
@@ -29,7 +29,7 @@ class PromptLangCLIPTextEmbeddings(CLIPTextEmbeddings):
 
     def forward(
             self,
-            input_dicts: Optional[list[list[SegOrAction]]] = None,
+            input_dicts: Optional[List[List[SegOrAction]]] = None,
             input_ids: Optional[torch.LongTensor] = None,
             position_ids: Optional[torch.LongTensor] = None,
             inputs_embeds: Optional[torch.FloatTensor] = None,
@@ -73,7 +73,7 @@ class PrompLangCLIPTextTransformer(CLIPTextTransformer):
 
     def forward(
             self,
-            input_ids: Optional[list[list[SegOrAction]]] = None,
+            input_ids: Optional[List[List[SegOrAction]]] = None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.Tensor] = None,
             output_attentions: Optional[bool] = None,
@@ -172,7 +172,7 @@ class PromptLangTextModel(CLIPTextModel):
 
     def forward(
             self,
-            input_ids: Optional[list[list[SegOrAction]]] = None,
+            input_ids: Optional[List[List[SegOrAction]]] = None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.Tensor] = None,
             output_attentions: Optional[bool] = None,

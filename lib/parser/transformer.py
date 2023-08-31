@@ -1,3 +1,5 @@
+from typing import List
+
 from lark import Transformer, Token
 
 from comfy.sd1_clip import SD1Tokenizer
@@ -18,7 +20,7 @@ class PromptTransformer(Transformer):
         super().__init__()
         self.tokenizer = tokenizer
 
-    def item(self, items: list[Token]):
+    def item(self, items: List[Token]):
         for item in items:
             if isinstance(item, Action):
                 return item

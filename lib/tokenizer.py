@@ -1,3 +1,5 @@
+from typing import List
+
 from lark import Tree
 
 from comfy.sd1_clip import SD1Tokenizer
@@ -16,7 +18,7 @@ class PromptLangTokenizer(SD1Tokenizer):
     Returns batches of segments and actions
     :return: List of list(batches) of segments and actions
     """
-    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs) -> list[list[SegOrAction]]:
+    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs) -> List[List[SegOrAction]]:
         if self.pad_with_end:
             pad_token = self.end_token
         else:

@@ -1,5 +1,6 @@
 import contextlib
 import os
+from typing import List
 
 import torch
 from transformers import CLIPTextConfig, modeling_utils
@@ -79,7 +80,7 @@ class PromptLangClipModel(torch.nn.Module):
         self.layer_idx = self.layer_default[1]
 
     # Completely changed to support Segments and actions
-    def set_up_textual_embeddings(self, tokens: list[list[SegOrAction]], current_embeds):
+    def set_up_textual_embeddings(self, tokens: List[List[SegOrAction]], current_embeds):
         next_new_token = token_dict_size = current_embeds.weight.shape[0] - 1
         embedding_weights = []
 
@@ -184,7 +185,7 @@ class PromptLangClipModel(torch.nn.Module):
 
     # Changed from comfy.sd1_clip.ClipTokenWeightEncoder
     # Changed to use PromptSegments
-    def encode_token_weights(self, prompt_segments: list[list[SegOrAction]]):
+    def encode_token_weights(self, prompt_segments: List[List[SegOrAction]]):
         to_encode = [[PromptSegment(text="_Empty Batch_", tokens=self.empty_tokens[0])]]
         for batch in prompt_segments:
             to_encode.append(batch)

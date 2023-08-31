@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, List
 
 from torch import Tensor
 from torch.nn import Embedding
@@ -10,7 +10,7 @@ from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
 class Action(ABC):
     @property
     @abstractmethod
-    def chars(self) -> Union[list[str], None]:
+    def chars(self) -> Union[List[str], None]:
         pass
 
     @property
@@ -36,7 +36,7 @@ class Action(ABC):
         pass
 
     @abstractmethod
-    def get_all_segments(self) -> list[PromptSegment]:
+    def get_all_segments(self) -> List[PromptSegment]:
         """
         Get all segments, including nested segments.
         :return:
@@ -57,7 +57,7 @@ class Action(ABC):
 
 
 class SingleArgAction(Action, ABC):
-    def get_all_segments(self) -> list[PromptSegment]:
+    def get_all_segments(self) -> List[PromptSegment]:
         segments = []
         for seg_or_action in self.arg:
             if isinstance(seg_or_action, Action):
@@ -66,7 +66,7 @@ class SingleArgAction(Action, ABC):
                 segments.append(seg_or_action)
         return segments
 
-    def __init__(self, arg: list[Union[PromptSegment, Action]]):
+    def __init__(self, arg: List[Union[PromptSegment, Action]]):
         # TODO: Target is a list now... what does this mean for us..
         self.arg = arg
 
@@ -74,7 +74,7 @@ class SingleArgAction(Action, ABC):
         return f"{self.name}({self.arg})"
 
 class MultiArgAction(Action, ABC):
-    def get_all_segments(self) -> list[PromptSegment]:
+    def get_all_segments(self) -> List[PromptSegment]:
         segments = []
         for seg_or_action in self.base_segment:
             if isinstance(seg_or_action, Action):
@@ -93,8 +93,8 @@ class MultiArgAction(Action, ABC):
 
     def __init__(
             self,
-            base_segment: list[Union[PromptSegment, Action]],
-            args: list[list[Union[PromptSegment, Action]]],
+            base_segment: List[Union[PromptSegment, Action]],
+            args: List[List[Union[PromptSegment, Action]]],
     ):
         self.base_segment = base_segment
         self.args = args
