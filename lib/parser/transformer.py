@@ -3,9 +3,10 @@ from typing import List
 from lark import Transformer, Token
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.KepPromptLang.lib.action.base import Action
+from custom_nodes.KepPromptLang.lib.action.base import Action, ActionArity
 from custom_nodes.KepPromptLang.lib.actions.diff import DiffAction
 from custom_nodes.KepPromptLang.lib.actions.rand import RandAction
+from custom_nodes.KepPromptLang.lib.parser.registration import get_action_by_name
 from custom_nodes.KepPromptLang.lib.parser.utils import build_prompt_segment
 from custom_nodes.KepPromptLang.lib.actions.neg import NegAction
 from custom_nodes.KepPromptLang.lib.actions.norm import NormAction
@@ -50,17 +51,13 @@ class PromptTransformer(Transformer):
     def embedding(self, items):
         return build_prompt_segment(f'{self.tokenizer.embedding_identifier}{items[0]}', self.tokenizer)
 
-    def function(self, items):
-        for item in items:
-            if item.data == 'sum_function':
-                return SumAction(item.children[0][:], item.children[1:][:])
-            elif item.data == 'neg_function':
-                return NegAction(item.children[0])
-            elif item.data == 'norm_function':
-                return NormAction(item.children[0])
-            elif item.data == 'diff_function':
-                return DiffAction(item.children[0][:], item.children[1:][:])
-            elif item.data == 'rand_function':
-                return RandAction(item.children)
-            else:
-                raise Exception("Unknown function type: " + str(item.data))
+    def generic_function(self, items):
+        action = get_action_by_name(items[0])
+        if action.arity == ActionArity.SINGLE:
+            if len(items) != 2:
+                raise ValueError(f"Action {action.name} should have exactly one argument")
+            return action(items[1])
+        elif action.arity == ActionArity.MULTI:
+            return action(items[1:][:])
+        else:
+            raise ValueError(f"Unknown action arity: {action.arity}")

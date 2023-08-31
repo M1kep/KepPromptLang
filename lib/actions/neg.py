@@ -2,6 +2,7 @@ import torch
 from torch.nn import Embedding
 
 from custom_nodes.KepPromptLang.lib.action.base import Action, SingleArgAction
+from custom_nodes.KepPromptLang.lib.parser.registration import register_action
 
 
 class NegAction(SingleArgAction):
@@ -30,3 +31,5 @@ class NegAction(SingleArgAction):
 
         target_embeddings = torch.cat(all_embeddings, dim=1)
         return target_embeddings * -1
+
+register_action(NegAction)

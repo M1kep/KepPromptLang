@@ -5,6 +5,7 @@ from custom_nodes.KepPromptLang.lib.action.base import (
     Action,
     SingleArgAction,
 )
+from custom_nodes.KepPromptLang.lib.parser.registration import register_action
 
 
 class NormAction(SingleArgAction):
@@ -35,3 +36,4 @@ class NormAction(SingleArgAction):
         target_embeddings = torch.cat(all_embeddings, dim=1)
         return torch.div(target_embeddings, torch.norm(target_embeddings, dim=-1, keepdim=True))
 
+register_action(NormAction)

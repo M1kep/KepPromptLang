@@ -9,9 +9,10 @@ from custom_nodes.KepPromptLang.lib.action.base import (
 )
 from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
 from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
+from custom_nodes.KepPromptLang.lib.parser.registration import register_action
 
 
-class RandAction(Action):
+class RandAction(MultiArgAction):
     grammar = 'rand(" arg ")"'
     name = "rand"
     chars = None
@@ -21,7 +22,7 @@ class RandAction(Action):
     range_max = 1
 
     def __init__(self, args: List[List[SegOrAction]]) -> None:
-        self.args = args
+        super().__init__(args)
         if len(args) != 1 and len(args) != 3:
             raise ValueError("Random action should have exactly one argument or three arguments")
 
@@ -84,13 +85,4 @@ class RandAction(Action):
         result = torch.empty(1, self.parsed_token_length, embedding_module.embedding_dim).uniform_(self.range_min, self.range_max)
         return result
 
-    def get_all_segments(self) -> List[PromptSegment]:
-        segments = []
-        for arg in self.args:
-            for seg_or_action in arg:
-                if isinstance(seg_or_action, Action):
-                    segments.extend(seg_or_action.get_all_segments())
-                else:
-                    segments.append(seg_or_action)
-
-        return segments
+register_action(RandAction)

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Union, List
 
 from torch import Tensor
@@ -7,10 +8,24 @@ from torch.nn import Embedding
 from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 
+class ActionArity(Enum):
+    NONE = 0
+    SINGLE = 1
+    MULTI = 2
+
 class Action(ABC):
     @property
     @abstractmethod
     def chars(self) -> Union[List[str], None]:
+        pass
+
+    @property
+    @abstractmethod
+    def arity(self) -> ActionArity:
+        """
+        Determines the arity of the action. This is used to determine how many arguments the action supports.
+        :return:
+        """
         pass
 
     @property
@@ -44,6 +59,14 @@ class Action(ABC):
         pass
 
     @abstractmethod
+    def __init__(self, *args, **kwargs) -> None:
+        """
+        Initialize the action. This is called when the action is parsed from the prompt.
+        :param args: The arguments for the action.
+        """
+        pass
+
+    @abstractmethod
     def get_result(self, embedding_module: Embedding) -> Tensor:
         """
         Get the result of this action. This is called when the embeddings are being calculated.
@@ -57,6 +80,7 @@ class Action(ABC):
 
 
 class SingleArgAction(Action, ABC):
+    arity = ActionArity.SINGLE
     def get_all_segments(self) -> List[PromptSegment]:
         segments = []
         for seg_or_action in self.arg:
@@ -74,15 +98,10 @@ class SingleArgAction(Action, ABC):
         return f"{self.name}({self.arg})"
 
 class MultiArgAction(Action, ABC):
+    arity = ActionArity.MULTI
     def get_all_segments(self) -> List[PromptSegment]:
         segments = []
-        for seg_or_action in self.base_segment:
-            if isinstance(seg_or_action, Action):
-                segments.extend(seg_or_action.get_all_segments())
-            else:
-                segments.append(seg_or_action)
-
-        for arg in self.args:
+        for arg in self.all_args:
             for seg_or_action in arg:
                 if isinstance(seg_or_action, Action):
                     segments.extend(seg_or_action.get_all_segments())
@@ -93,8 +112,6 @@ class MultiArgAction(Action, ABC):
 
     def __init__(
             self,
-            base_segment: List[Union[PromptSegment, Action]],
             args: List[List[Union[PromptSegment, Action]]],
     ):
-        self.base_segment = base_segment
-        self.args = args
+        self.all_args = args
