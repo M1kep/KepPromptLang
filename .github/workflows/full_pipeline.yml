@@ -55,18 +55,16 @@ jobs:
 #            models/checkpoints
 #          key: ${{ runner.os }}-sd-15-checkpoint
 
-      - name: Activate Virtualenv
-        run: |
-          source ./.venv/bin/activate
-
       - name: Check and Download Model
         run: |
+          source ./.venv/bin/activate
           python custom_nodes/ClipStuff/test_files/check_and_download_model.py
 
       - name: Run in Background
         env:
           PYTHONUNBUFFERED: 1
         run: |
+          source ./.venv/bin/activate
           python main.py --cpu &> server.log &
           sleep 10
 
@@ -75,6 +73,7 @@ jobs:
 
       - name: Run Workflow
         run: |
+          source ./.venv/bin/activate
           python custom_nodes/ClipStuff/test_files/run_workflow.py
 
       - name: Upload Comfy Server Log
