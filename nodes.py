@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from PIL import Image
@@ -31,7 +31,7 @@ class SpecialClipLoader:
     CATEGORY = "conditioning"
 
     @staticmethod
-    def load_clip(source_clip: comfy.sd.CLIP) -> tuple[comfy.sd.CLIP]:
+    def load_clip(source_clip: comfy.sd.CLIP) -> Tuple[comfy.sd.CLIP]:
         clip_target = EmptyClass()
         clip_target.params = {}
         clip_target.clip = PromptLangClipModel
