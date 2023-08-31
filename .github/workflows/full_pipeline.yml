@@ -1,4 +1,4 @@
-name: Test With Upstream
+name: Run Test Workflow
 on: [workflow_dispatch]
 
 jobs:
@@ -16,14 +16,6 @@ jobs:
           ref: master
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          # Version range or exact version of Python or PyPy to use, using SemVer's version range syntax. Reads from .python-version if unset.
-          python-version: ${{ matrix.python-version }}
-          # Used to specify a package manager for caching in the default directory. Supported values: pip, pipenv, poetry.
-          cache: pip
-
       - name: Clone Node
         uses: actions/checkout@v3
         with:
@@ -31,8 +23,26 @@ jobs:
           fetch-depth: 0
           path: custom_nodes/ClipStuff
 
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          # Version range or exact version of Python or PyPy to use, using SemVer's version range syntax. Reads from .python-version if unset.
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache virtualenv
+        uses: actions/cache@v3
+        id: cache-venv
+        with:
+          path: ./.venv/
+          key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ matrix.python-version }}-
+
       - name: Install Requirements
+        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
+          python -m venv ./.venv
+          source ./.venv/bin/activate
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
           pip install -r custom_nodes/ClipStuff/requirements.txt
@@ -45,9 +55,11 @@ jobs:
 #            models/checkpoints
 #          key: ${{ runner.os }}-sd-15-checkpoint
 
+      - name: Activate Virtualenv
+        run: |
+          source ./.venv/bin/activate
+
       - name: Check and Download Model
-        env:
-          PYTHONUNBUFFERED: 1
         run: |
           python custom_nodes/ClipStuff/test_files/check_and_download_model.py
 
