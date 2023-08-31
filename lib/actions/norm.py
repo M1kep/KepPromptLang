@@ -1,7 +1,7 @@
 import torch
 from torch.nn import Embedding
 
-from custom_nodes.ClipStuff.lib.action.base import (
+from custom_nodes.KepPromptLang.lib.action.base import (
     Action,
     SingleArgAction,
 )

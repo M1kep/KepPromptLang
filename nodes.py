@@ -7,9 +7,9 @@ from PIL import Image
 import folder_paths
 import comfy.sd
 import comfy.ops
-from custom_nodes.ClipStuff.lib.clip_model import PromptLangClipModel
+from custom_nodes.KepPromptLang.lib.clip_model import PromptLangClipModel
 
-from custom_nodes.ClipStuff.lib.tokenizer import PromptLangTokenizer
+from custom_nodes.KepPromptLang.lib.tokenizer import PromptLangTokenizer
 
 
 class EmptyClass:

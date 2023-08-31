@@ -3,9 +3,9 @@ from typing import Union, List
 import torch
 from torch.nn import Embedding
 
-from custom_nodes.ClipStuff.lib.actions.action_utils import get_embedding
-from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
-from custom_nodes.ClipStuff.lib.action.base import Action
+from custom_nodes.KepPromptLang.lib.actions.action_utils import get_embedding
+from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
+from custom_nodes.KepPromptLang.lib.action.base import Action
 
 
 class SumAction(Action):

@@ -3,13 +3,13 @@ from typing import List
 from lark import Transformer, Token
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.action.base import Action
-from custom_nodes.ClipStuff.lib.actions.diff import DiffAction
-from custom_nodes.ClipStuff.lib.parser.utils import build_prompt_segment
-from custom_nodes.ClipStuff.lib.actions.neg import NegAction
-from custom_nodes.ClipStuff.lib.actions.norm import NormAction
-from custom_nodes.ClipStuff.lib.actions.sum import SumAction
-from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
+from custom_nodes.KepPromptLang.lib.action.base import Action
+from custom_nodes.KepPromptLang.lib.actions.diff import DiffAction
+from custom_nodes.KepPromptLang.lib.parser.utils import build_prompt_segment
+from custom_nodes.KepPromptLang.lib.actions.neg import NegAction
+from custom_nodes.KepPromptLang.lib.actions.norm import NormAction
+from custom_nodes.KepPromptLang.lib.actions.sum import SumAction
+from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 
 class PromptTransformer(Transformer):

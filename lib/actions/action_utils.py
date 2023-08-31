@@ -1,8 +1,8 @@
 from torch import Tensor
 from torch.nn import Embedding
 
-from custom_nodes.ClipStuff.lib.action.base import Action
-from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
+from custom_nodes.KepPromptLang.lib.action.base import Action
+from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
 
 
 def get_embedding(seg_or_action: SegOrAction, embedding_module: Embedding) -> Tensor:

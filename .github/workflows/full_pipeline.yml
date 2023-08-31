@@ -21,7 +21,7 @@ jobs:
         with:
           ref: master
           fetch-depth: 0
-          path: custom_nodes/ClipStuff
+          path: custom_nodes/KepPromptLang
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -45,7 +45,7 @@ jobs:
           source ./.venv/bin/activate
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
-          pip install -r custom_nodes/ClipStuff/requirements.txt
+          pip install -r custom_nodes/KepPromptLang/requirements.txt
           pip install huggingface_hub websocket-client
 
 #      - name: Cache SD Checkpoint
@@ -58,7 +58,7 @@ jobs:
       - name: Check and Download Model
         run: |
           source ./.venv/bin/activate
-          python custom_nodes/ClipStuff/test_files/check_and_download_model.py
+          python custom_nodes/KepPromptLang/test_files/check_and_download_model.py
 
       - name: Run in Background
         env:
@@ -74,7 +74,7 @@ jobs:
       - name: Run Workflow
         run: |
           source ./.venv/bin/activate
-          python custom_nodes/ClipStuff/test_files/run_workflow.py
+          python custom_nodes/KepPromptLang/test_files/run_workflow.py
 
       - name: Upload Comfy Server Log
         if: always()

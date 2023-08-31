@@ -10,8 +10,8 @@ from transformers.models.clip.modeling_clip import (
     CLIPTextModel,
 )
 
-from custom_nodes.ClipStuff.lib.action.base import Action
-from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
+from custom_nodes.KepPromptLang.lib.action.base import Action
+from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
 
 def slerp(val, low, high):
     low = low.unsqueeze(0)

@@ -4,7 +4,7 @@ from typing import Union, List
 from torch import Tensor
 from torch.nn import Embedding
 
-from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
+from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 
 class Action(ABC):

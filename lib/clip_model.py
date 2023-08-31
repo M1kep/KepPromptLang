@@ -7,10 +7,10 @@ from transformers import CLIPTextConfig, modeling_utils
 
 from comfy import model_management
 import comfy.ops
-from custom_nodes.ClipStuff.lib.action.base import Action
-from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
-from custom_nodes.ClipStuff.lib.fun_clip_stuff import PromptLangTextModel
-from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
+from custom_nodes.KepPromptLang.lib.action.base import Action
+from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
+from custom_nodes.KepPromptLang.lib.fun_clip_stuff import PromptLangTextModel
+from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 
 # Methods with no comment can be assumed to be the same as comfy.sd1_clip.SD1ClipModel

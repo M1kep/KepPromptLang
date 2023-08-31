@@ -3,11 +3,11 @@ from typing import List
 from lark import Tree
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.actions.types import SegOrAction
+from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
 
-from custom_nodes.ClipStuff.lib.parser import PromptParser
-from custom_nodes.ClipStuff.lib.parser.transformer import PromptTransformer
-from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
+from custom_nodes.KepPromptLang.lib.parser import PromptParser
+from custom_nodes.KepPromptLang.lib.parser.transformer import PromptTransformer
+from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 class PromptLangTokenizer(SD1Tokenizer):
     def __init__(self, tokenizer_path=None, max_length=77, pad_with_end=True, embedding_directory=None, embedding_size=768, embedding_key='clip_l', special_tokens=None):

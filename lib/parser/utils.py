@@ -1,7 +1,7 @@
 from lark import Token
 
 from comfy.sd1_clip import SD1Tokenizer
-from custom_nodes.ClipStuff.lib.parser.prompt_segment import PromptSegment
+from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 
 def flatten_tree(tree):
