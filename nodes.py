@@ -1,5 +1,5 @@
 import random
-from typing import Union, List
+from typing import List
 
 import numpy as np
 from PIL import Image
@@ -18,7 +18,7 @@ class EmptyClass:
 
 class SpecialClipLoader:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):  # type: ignore
         return {
             "required": {
                 "source_clip": ("CLIP",),
@@ -31,7 +31,7 @@ class SpecialClipLoader:
     CATEGORY = "conditioning"
 
     @staticmethod
-    def load_clip(source_clip):
+    def load_clip(source_clip: comfy.sd.CLIP) -> tuple[comfy.sd.CLIP]:
         clip_target = EmptyClass()
         clip_target.params = {}
         clip_target.clip = PromptLangClipModel
@@ -44,18 +44,18 @@ class SpecialClipLoader:
         return (clip,)
 
 
-def tensor2img(tensor_img):
+def tensor2img(tensor_img) -> Image.Image:
     i = 255.0 * tensor_img.cpu().numpy()
     i_np_arr = np.clip(i, 0, 255, out=i).astype(np.uint8, copy=False)
     return Image.fromarray(i_np_arr)
 
 
 class BuildGif:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     @classmethod
-    def INPUT_TYPES(cls):
+    def INPUT_TYPES(cls):  # type: ignore
         return {
             "required": {
                 "images": ("IMAGE",),
@@ -85,13 +85,13 @@ class BuildGif:
         if len(split_every) > 1:
             raise Exception("List input for split every is not supported.")
 
-        split_every = split_every[0]
+        split_every_val = split_every[0]
         batch_size = images[0].size()[0]
-        if split_every == -1:
+        if split_every_val == -1:
             split_chunks = 1
-            split_every = len(images)
+            split_every_val = len(images)
         else:
-            split_chunks = int(len(images) / split_every)
+            split_chunks = int(len(images) / split_every_val)
 
         out = []
 
@@ -99,7 +99,7 @@ class BuildGif:
         num_tall = split_chunks
 
         chunked_batches = [
-            images[split_every * chunk_idx : split_every * (chunk_idx + 1)]
+            images[split_every_val * chunk_idx : split_every_val * (chunk_idx + 1)]
             for chunk_idx in range(split_chunks)
         ]
 
@@ -107,7 +107,7 @@ class BuildGif:
 
         if output_mode == "Big Grid":
             # For every image in gif
-            for idx_in_chunk in range(split_every):
+            for idx_in_chunk in range(split_every_val):
                 img_shape = images[0][0].shape
                 img_frame = Image.new(
                     "RGB", size=(num_wide * img_shape[0], num_tall * img_shape[1])
@@ -138,8 +138,8 @@ class BuildGif:
             )
         elif output_mode == "One Per Split":
             for split_idx in range(int(split_chunks)):
-                split_start = split_every * split_idx
-                split_end = split_every * (split_idx + 1)
+                split_start = split_every_val * split_idx
+                split_end = split_every_val * (split_idx + 1)
                 for batch_idx in range(batch_size):
                     save_path = f"{folder_paths.get_output_directory()}/-{batch_idx}-{random.randint(1, 100)}"
                     print(save_path)
