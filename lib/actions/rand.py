@@ -85,4 +85,3 @@ class RandAction(MultiArgAction):
         result = torch.empty(1, self.parsed_token_length, embedding_module.embedding_dim).uniform_(self.range_min, self.range_max)
         return result
 
-register_action(RandAction)

@@ -36,4 +36,3 @@ class NormAction(SingleArgAction):
         target_embeddings = torch.cat(all_embeddings, dim=1)
         return torch.div(target_embeddings, torch.norm(target_embeddings, dim=-1, keepdim=True))
 
-register_action(NormAction)

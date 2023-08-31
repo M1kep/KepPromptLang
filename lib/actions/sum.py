@@ -79,4 +79,3 @@ class SumAction(MultiArgAction):
         out += "\t" * (depth - 1) + ")"
         return out
 
-register_action(SumAction)

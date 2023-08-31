@@ -32,4 +32,3 @@ class NegAction(SingleArgAction):
         target_embeddings = torch.cat(all_embeddings, dim=1)
         return target_embeddings * -1
 
-register_action(NegAction)

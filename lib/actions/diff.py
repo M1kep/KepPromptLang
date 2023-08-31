@@ -75,4 +75,3 @@ class DiffAction(MultiArgAction):
         out += "\t" * (depth - 1) + ")"
         return out
 
-register_action(DiffAction)
