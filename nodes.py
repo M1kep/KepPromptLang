@@ -60,6 +60,7 @@ class BuildGif:
             "required": {
                 "images": ("IMAGE",),
                 "split_every": ("INT", {"default": -1}),
+                "frame_duration": ("INT", {"default": 125}),
                 "output_mode": (
                     ["One Per Split", "Big Grid"],
                     {"default": "Big Grid"},
@@ -78,7 +79,7 @@ class BuildGif:
     CATEGORY = "List Stuff"
 
     @staticmethod
-    def build_gif(images: list, split_every: List[int], output_mode: str):
+    def build_gif(images: list, split_every: List[int], frame_duration: int, output_mode: str):
         print("Build GIF called!")
         print(f"{type(images)}")
 
@@ -133,7 +134,7 @@ class BuildGif:
                 save_all=True,
                 append_images=frames[1:],
                 optimize=False,
-                duration=125,
+                duration=frame_duration,
                 loop=0,
             )
         elif output_mode == "One Per Split":
@@ -151,7 +152,7 @@ class BuildGif:
                             for nested_batch in images[split_start + 1 : split_end]
                         ],
                         optimize=False,
-                        duration=125,
+                        duration=frame_duration,
                         loop=0,
                     )
         return (out,)
