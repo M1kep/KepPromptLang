@@ -26,17 +26,17 @@ class MultiplyAction(MultiArgAction):
 
     def _parse_multiplier(self, arg: List[SegOrAction]) -> None:
         if len(arg) != 1:
-            raise ValueError("Multiply action first argument should have exactly one segment")
+            raise ValueError("Multiply actions multiplier should have exactly one segment")
 
         multiplier_seg_or_action = arg[0]
 
         if isinstance(multiplier_seg_or_action, Action):
-            raise ValueError("Multiply action should not have an action as an argument")
+            raise ValueError("Multiply actions multiplier must be a number")
 
         try:
             self.parsed_multiplier = float(multiplier_seg_or_action.text)
         except ValueError:
-            raise ValueError("Multiply action should have an integer/float as the first argument")
+            raise ValueError("Multiply action should have an integer/float as the multiplier")
 
     def token_length(self) -> int:
         """
