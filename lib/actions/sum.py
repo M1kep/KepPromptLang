@@ -16,8 +16,6 @@ class SumAction(MultiArgAction):
 
     def __init__(self, args: List[List[Union[PromptSegment, Action]]]) -> None:
         super().__init__(args)
-        if len(args) < 2:
-            raise ValueError("Sum action should have at least two arguments")
 
         self.base_arg = args[0]
         self.additional_args = args[1:]
