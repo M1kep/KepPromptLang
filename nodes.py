@@ -1,5 +1,6 @@
 import random
-from typing import List, Tuple
+import os
+from typing import List, Tuple, Any
 
 import numpy as np
 from PIL import Image
@@ -52,6 +53,7 @@ def tensor2img(tensor_img) -> Image.Image:
 
 class BuildGif:
     def __init__(self) -> None:
+        self.output_dir = folder_paths.get_output_directory()
         pass
 
     @classmethod
@@ -78,14 +80,22 @@ class BuildGif:
 
     CATEGORY = "List Stuff"
 
-    @staticmethod
-    def build_gif(images: list, split_every: List[int], frame_duration: int, output_mode: str):
+    def build_gif(self, images: List[Any], split_every: List[int], frame_duration: List[int], output_mode: List[str]):
         print("Build GIF called!")
         print(f"{type(images)}")
 
         if len(split_every) > 1:
             raise Exception("List input for split every is not supported.")
 
+        if len(output_mode) > 1:
+            raise Exception("List input for output_mode is not supported.")
+        output_mode = output_mode[0]
+
+        if len(frame_duration) > 1:
+            raise Exception("List input for frame_duration is not supported.")
+        frame_duration = frame_duration[0]
+
+        full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(filename_prefix="Gif", output_dir=self.output_dir, image_width=0, image_height=0)
         split_every_val = split_every[0]
         batch_size = images[0].size()[0]
         if split_every_val == -1:
@@ -123,8 +133,9 @@ class BuildGif:
                         )
                 frames.append(img_frame)
 
+            file = f"{filename}_{counter:05}_"
             save_path = (
-                f"{folder_paths.get_output_directory()}/{random.randint(1, 100)}"
+                f"{os.path.join(full_output_folder, file)}"
             )
             frames[0].save(
                 f"{save_path}.webp",
@@ -142,7 +153,11 @@ class BuildGif:
                 split_start = split_every_val * split_idx
                 split_end = split_every_val * (split_idx + 1)
                 for batch_idx in range(batch_size):
-                    save_path = f"{folder_paths.get_output_directory()}/-{batch_idx}-{random.randint(1, 100)}"
+                    file = f"{filename}_{counter:05}_"
+                    save_path = (
+                        f"{os.path.join(full_output_folder, file)}"
+                    )
+                    counter += 1
                     print(save_path)
                     tensor2img(images[split_start][batch_idx]).save(
                         f"{save_path}.webp",
