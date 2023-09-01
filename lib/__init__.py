@@ -1,3 +1,4 @@
+from custom_nodes.KepPromptLang.lib.actions.avg import AverageAction
 from custom_nodes.KepPromptLang.lib.actions.diff import DiffAction
 from custom_nodes.KepPromptLang.lib.actions.mult import MultiplyAction
 from custom_nodes.KepPromptLang.lib.actions.neg import NegAction
@@ -14,3 +15,4 @@ register_action(NormAction)
 register_action(RandAction)
 register_action(SumAction)
 register_action(SlerpAction)
+register_action(AverageAction)
