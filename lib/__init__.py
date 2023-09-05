@@ -4,6 +4,7 @@ from custom_nodes.KepPromptLang.lib.actions.mult import MultiplyAction
 from custom_nodes.KepPromptLang.lib.actions.neg import NegAction
 from custom_nodes.KepPromptLang.lib.actions.norm import NormAction
 from custom_nodes.KepPromptLang.lib.actions.rand import RandAction
+from custom_nodes.KepPromptLang.lib.actions.scale_dims import ScaleDims
 from custom_nodes.KepPromptLang.lib.actions.slerp import SlerpAction
 from custom_nodes.KepPromptLang.lib.actions.sum import SumAction
 from custom_nodes.KepPromptLang.lib.parser.registration import register_action
@@ -16,3 +17,4 @@ register_action(RandAction)
 register_action(SumAction)
 register_action(SlerpAction)
 register_action(AverageAction)
+register_action(ScaleDims)
