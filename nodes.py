@@ -50,7 +50,6 @@ def tensor2img(tensor_img) -> Image.Image:
     i_np_arr = np.clip(i, 0, 255, out=i).astype(np.uint8, copy=False)
     return Image.fromarray(i_np_arr)
 
-
 class BuildGif:
     def __init__(self) -> None:
         self.output_dir = folder_paths.get_output_directory()
@@ -71,12 +70,12 @@ class BuildGif:
         }
 
     RELOAD_INST = True
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("Gifs",)
+    RETURN_TYPES = ()
+    # RETURN_NAMES = ("Gifs",)
     INPUT_IS_LIST = True
     FUNCTION = "build_gif"
-    OUTPUT_IS_LIST = (True,)
-    # OUTPUT_NODE = False
+    # OUTPUT_IS_LIST = (True,)
+    OUTPUT_NODE = True
 
     CATEGORY = "List Stuff"
 
@@ -104,8 +103,6 @@ class BuildGif:
         else:
             split_chunks = int(len(images) / split_every_val)
 
-        out = []
-
         num_wide = batch_size
         num_tall = split_chunks
 
@@ -115,6 +112,7 @@ class BuildGif:
         ]
 
         frames = []
+        results = list()
 
         if output_mode == "Big Grid":
             # For every image in gif
@@ -148,6 +146,11 @@ class BuildGif:
                 duration=frame_duration,
                 loop=0,
             )
+            results.append({
+                "filename": f"{file}.webp",
+                "subfolder": subfolder,
+                "type": "output"
+            })
         elif output_mode == "One Per Split":
             for split_idx in range(int(split_chunks)):
                 split_start = split_every_val * split_idx
@@ -170,4 +173,9 @@ class BuildGif:
                         duration=frame_duration,
                         loop=0,
                     )
-        return (out,)
+                    results.append({
+                        "filename": f"{file}.webp",
+                        "subfolder": subfolder,
+                        "type": "output"
+                    })
+        return { "ui": { "images": results } }
