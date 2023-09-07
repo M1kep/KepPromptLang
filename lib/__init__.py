@@ -1,5 +1,6 @@
 from custom_nodes.KepPromptLang.lib.actions.avg import AverageAction
 from custom_nodes.KepPromptLang.lib.actions.diff import DiffAction
+from custom_nodes.KepPromptLang.lib.actions.max import MaxAction
 from custom_nodes.KepPromptLang.lib.actions.mult import MultiplyAction
 from custom_nodes.KepPromptLang.lib.actions.neg import NegAction
 from custom_nodes.KepPromptLang.lib.actions.norm import NormAction
@@ -20,3 +21,4 @@ register_action(SlerpAction)
 register_action(AverageAction)
 register_action(ScaleDims)
 register_action(SetDims)
+register_action(MaxAction)
