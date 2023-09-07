@@ -36,3 +36,20 @@ def slerp(val: float, low: torch.Tensor, high: torch.Tensor, epsilon=1e-5):
     scale_1 = torch.where(close_condition, val, scale_1)
 
     return scale_0 * low + scale_1 * high
+
+def is_broadcastable(tensor1, tensor2) -> bool:
+    """
+    Check if two tensors are broadcastable.
+
+    Parameters:
+    - tensor1 (torch.Tensor): The target tensor against which broadcastability of tensor2 is checked.
+    - tensor2 (torch.Tensor): The tensor whose broadcastability is to be verified against tensor1.
+
+    Returns:
+    - bool: True if tensor2 is broadcastable to tensor1, False otherwise.
+    """
+    try:
+        broadcasted_shape = torch.broadcast_shapes(tensor1.shape, tensor2.shape)
+        return True
+    except RuntimeError:
+        return False
