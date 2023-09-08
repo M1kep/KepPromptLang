@@ -2,6 +2,7 @@ from custom_nodes.KepPromptLang.lib.actions.abs_max import AbsMaxAction
 from custom_nodes.KepPromptLang.lib.actions.avg import AverageAction
 from custom_nodes.KepPromptLang.lib.actions.diff import DiffAction
 from custom_nodes.KepPromptLang.lib.actions.max import MaxAction
+from custom_nodes.KepPromptLang.lib.actions.min import MinAction
 from custom_nodes.KepPromptLang.lib.actions.mult import MultiplyAction
 from custom_nodes.KepPromptLang.lib.actions.neg import NegAction
 from custom_nodes.KepPromptLang.lib.actions.norm import NormAction
@@ -24,3 +25,4 @@ register_action(ScaleDims)
 register_action(SetDims)
 register_action(MaxAction)
 register_action(AbsMaxAction)
+register_action(MinAction)
