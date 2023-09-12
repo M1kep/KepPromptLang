@@ -3,6 +3,7 @@ from custom_nodes.KepPromptLang.lib.actions.diff import DiffAction
 from custom_nodes.KepPromptLang.lib.actions.mult import MultiplyAction
 from custom_nodes.KepPromptLang.lib.actions.neg import NegAction
 from custom_nodes.KepPromptLang.lib.actions.norm import NormAction
+from custom_nodes.KepPromptLang.lib.actions.project import ProjectAction
 from custom_nodes.KepPromptLang.lib.actions.rand import RandAction
 from custom_nodes.KepPromptLang.lib.actions.scale_dims import ScaleDims
 from custom_nodes.KepPromptLang.lib.actions.set_dims import SetDims
@@ -20,3 +21,4 @@ register_action(SlerpAction)
 register_action(AverageAction)
 register_action(ScaleDims)
 register_action(SetDims)
+register_action(ProjectAction)
