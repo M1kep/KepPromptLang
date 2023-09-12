@@ -74,17 +74,17 @@ class ProjectAction(MultiArgAction):
         # Calculate the embeddings for the start segment
         source_embedding = get_embedding_for_segments(
             self.source_argument, embedding_module
-        )
+        ).to(dtype=torch.float32)
         onto_embedding = get_embedding_for_segments(
             self.onto_argument, embedding_module
-        )
+        ).to(dtype=torch.float32)
 
         # Perform the projection
         return torch.mul(
             torch.mul(source_embedding, onto_embedding)
             / torch.mul(onto_embedding, onto_embedding),
             onto_embedding,
-        )
+        ).to(dtype=torch.float16)
 
     # def __repr__(self):
     #     return f"sum(\n\tbase_segment={self.base_segment},\n\targs={self.args}\n)"
