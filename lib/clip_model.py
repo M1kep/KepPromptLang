@@ -7,6 +7,7 @@ from transformers import CLIPTextConfig, modeling_utils
 
 from comfy import model_management
 import comfy.ops
+from comfy.sdxl_clip import SDXLClipModel
 from custom_nodes.KepPromptLang.lib.action.base import Action
 from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
 from custom_nodes.KepPromptLang.lib.fun_clip_stuff import PromptLangTextModel
@@ -209,3 +210,25 @@ class PromptLangClipModel(torch.nn.Module):
         if (len(output) == 0):
             return z_empty.cpu(), first_pooled.cpu()
         return torch.cat(output, dim=-2).cpu(), first_pooled.cpu()
+
+class PromptLangSDXLClipModel(SDXLClipModel):
+    def __init__(self, device="cpu", dtype=None) -> None:
+        # Skip SDXLClipModel's init
+        super(SDXLClipModel, self).__init__()
+        self.clip_l = PromptLangClipModel(layer="hidden", layer_idx=11, device=device, dtype=dtype)
+        self.clip_l.layer_norm_hidden_state = False
+        self.clip_g = PromptLangSDXLClipG(device, dtype)
+
+class PromptLangSDXLClipG(PromptLangClipModel):
+    def __init__(self, device="cpu", max_length=77, freeze=True, layer="penultimate", layer_idx=None, textmodel_path=None, dtype=None):
+        if layer == "penultimate":
+            layer="hidden"
+            layer_idx=-2
+
+        textmodel_json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_config_bigg.json")
+        super().__init__(device=device, freeze=freeze, layer=layer, layer_idx=layer_idx, textmodel_json_config=textmodel_json_config, textmodel_path=textmodel_path, dtype=dtype)
+        self.empty_tokens = [[49406] + [49407] + [0] * 75]
+        self.layer_norm_hidden_state = False
+
+    def load_sd(self, sd):
+        return super().load_sd(sd)
