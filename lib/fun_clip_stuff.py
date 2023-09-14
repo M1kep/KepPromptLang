@@ -143,6 +143,9 @@ class PrompLangCLIPTextTransformer(CLIPTextTransformer):
                 else:
                     if seg_or_action.text == '__PAD__':
                         break
+
+                    # Is a segment, and isn't the pad segment
+                    idx += seg_or_action.token_length()
             eot_idx.append(idx)
         # text_embeds.shape = [batch_size, sequence_length, transformer.width]
         # take features from the eot embedding (eot_token is the highest number in each sequence)
