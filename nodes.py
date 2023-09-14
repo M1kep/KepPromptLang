@@ -8,6 +8,7 @@ from PIL import Image
 import folder_paths
 import comfy.sd
 import comfy.ops
+from comfy.supported_models_base import ClipTarget
 from custom_nodes.KepPromptLang.lib.clip_model import PromptLangClipModel
 
 from custom_nodes.KepPromptLang.lib.tokenizer import PromptLangTokenizer
@@ -33,10 +34,7 @@ class SpecialClipLoader:
 
     @staticmethod
     def load_clip(source_clip: comfy.sd.CLIP) -> Tuple[comfy.sd.CLIP]:
-        clip_target = EmptyClass()
-        clip_target.params = {}
-        clip_target.clip = PromptLangClipModel
-        clip_target.tokenizer = PromptLangTokenizer
+        clip_target = ClipTarget(PromptLangTokenizer, PromptLangClipModel)
 
         clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.embedding_directory)
         comfy.sd.load_clip_weights(
