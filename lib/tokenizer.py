@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from lark import Tree
 
@@ -10,7 +10,7 @@ from custom_nodes.KepPromptLang.lib.parser.transformer import PromptTransformer
 from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 class PromptLangTokenizer(SD1Tokenizer):
-    def __init__(self, tokenizer_path=None, max_length=77, pad_with_end=True, embedding_directory=None, embedding_size=768, embedding_key='clip_l', special_tokens=None):
+    def __init__(self, tokenizer_path=None, max_length=77, pad_with_end=True, embedding_directory=None, embedding_size=768, embedding_key='clip_l', special_tokens=None) -> None:
         super().__init__(tokenizer_path, max_length, pad_with_end, embedding_directory, embedding_size, embedding_key)
 
     """
@@ -66,3 +66,20 @@ class PromptLangTokenizer(SD1Tokenizer):
         #     batch_size_info(batch)
 
         return batched_segments
+
+
+class PromptLangSDXLClipGTokenizer(PromptLangTokenizer):
+    def __init__(self, tokenizer_path=None, embedding_directory=None) -> None:
+        super().__init__(tokenizer_path, pad_with_end=False, embedding_directory=embedding_directory, embedding_size=1280, embedding_key='clip_g')
+
+
+class PromptLangSDXLTokenizer(SD1Tokenizer):
+    def __init__(self, embedding_directory=None) -> None:
+        self.clip_l = PromptLangTokenizer(embedding_directory=embedding_directory)
+        self.clip_g = PromptLangSDXLClipGTokenizer(embedding_directory=embedding_directory)
+
+    def tokenize_with_weights(self, text:str, return_word_ids=False) -> Dict[str, List[List[SegOrAction]]]:
+        out = {}
+        out["g"] = self.clip_g.tokenize_with_weights(text, return_word_ids)
+        out["l"] = self.clip_l.tokenize_with_weights(text, return_word_ids)
+        return out

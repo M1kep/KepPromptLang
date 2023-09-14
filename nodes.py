@@ -11,9 +11,15 @@ import comfy.ops
 from comfy.sd2_clip import SD2ClipModel
 from comfy.sdxl_clip import SDXLClipModel
 from comfy.supported_models_base import ClipTarget
-from custom_nodes.KepPromptLang.lib.clip_model import PromptLangClipModel
+from custom_nodes.KepPromptLang.lib.clip_model import (
+    PromptLangClipModel,
+    PromptLangSDXLClipModel,
+)
 
-from custom_nodes.KepPromptLang.lib.tokenizer import PromptLangTokenizer
+from custom_nodes.KepPromptLang.lib.tokenizer import (
+    PromptLangTokenizer,
+    PromptLangSDXLTokenizer,
+)
 
 
 class EmptyClass:
@@ -37,8 +43,12 @@ class SpecialClipLoader:
     @staticmethod
     def load_clip(source_clip: comfy.sd.CLIP) -> Tuple[comfy.sd.CLIP]:
 
-        if isinstance(source_clip, SDXLClipModel):
-            raise ValueError("SDXL Clip model is not supported.")
+        if isinstance(source_clip.cond_stage_model, SDXLClipModel):
+            clip_target = ClipTarget(PromptLangSDXLTokenizer, PromptLangSDXLClipModel)
+            clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.clip_g.embedding_directory)
+            comfy.sd.load_clip_weights(
+                clip.cond_stage_model, source_clip.cond_stage_model.state_dict()
+            )
         elif isinstance(source_clip, SD2ClipModel):
             raise ValueError("SD2 Clip model is not supported.")
         else:
