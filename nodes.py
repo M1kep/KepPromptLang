@@ -53,9 +53,9 @@ class SpecialClipLoader:
             raise ValueError("SD2 Clip model is not supported.")
         else:
             clip_target = ClipTarget(PromptLangTokenizer, PromptLangClipModel)
-            clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.embedding_directory)
+            clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.clip_l.embedding_directory)
             comfy.sd.load_clip_weights(
-                clip.cond_stage_model, source_clip.cond_stage_model.state_dict()
+                clip.cond_stage_model, source_clip.cond_stage_model.clip_l.state_dict()
             )
         return (clip,)
 
