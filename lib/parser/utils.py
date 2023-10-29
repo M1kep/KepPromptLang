@@ -15,8 +15,9 @@ def build_prompt_segment(text: str, tokenizer: SD1Tokenizer) -> PromptSegment:
     split_text = text.split(" ")
     tokens = []
     for word in split_text:
-        if word.startswith(tokenizer.embedding_identifier) and tokenizer.embedding_directory is not None:
-            embedding_name = word[len(tokenizer.embedding_identifier):].strip('\n')
+        if word.startswith(tokenizer.clip_l.embedding_identifier) and tokenizer.clip_l.embedding_directory is not None:
+            embedding_name = word[len(tokenizer.clip_l.embedding_identifier):].strip('\n')
+
 
             get_embed_ret = tokenizer._try_get_embedding(embedding_name)
             embedding = get_embed_ret[0]
@@ -33,6 +34,6 @@ def build_prompt_segment(text: str, tokenizer: SD1Tokenizer) -> PromptSegment:
                 word = leftover
             else:
                 continue
-        tokens.extend(tokenizer.tokenizer(word)["input_ids"][1:-1])
+        tokens.extend(tokenizer.clip_l.tokenizer(word)["input_ids"][1:-1])
 
     return PromptSegment(text, tokens)
