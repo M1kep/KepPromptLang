@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Union, List
+from typing import Union, List, TypedDict, Tuple
 
 from torch import Tensor
 from torch.nn import Embedding
@@ -12,6 +12,13 @@ class ActionArity(Enum):
     NONE = 0
     SINGLE = 1
     MULTI = 2
+
+class PostModifiers(TypedDict):
+    """
+    A dictionary of post modifiers for an action result.
+    """
+    position_embed_scale: Union[float, None]
+
 
 class Action(ABC):
     @property
@@ -67,7 +74,7 @@ class Action(ABC):
         pass
 
     @abstractmethod
-    def get_result(self, embedding_module: Embedding) -> Tensor:
+    def get_result(self, embedding_module: Embedding) -> Union[Tensor, Tuple[Tensor, PostModifiers]]:
         """
         Get the result of this action. This is called when the embeddings are being calculated.
         :param embedding_module: The embedding module to use to get the base embeddings for tokens.

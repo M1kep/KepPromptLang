@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union, List
+from typing import Optional, Tuple, Union, List, TypedDict
 
 import torch
 from transformers import CLIPTextConfig
@@ -23,6 +23,17 @@ def slerp(val, low, high):
     res = (torch.sin((1.0-val)*omega)/so).unsqueeze(1)*low + (torch.sin(val*omega)/so).unsqueeze(1) * high
     return res
 
+
+class PosModifier(TypedDict):
+    """
+    A dictionary of post modifiers for an action result.
+    """
+
+    position_embed_scale: Union[float]
+    start_idx: Union[int]
+    end_idx: Union[int]
+
+
 class PromptLangCLIPTextEmbeddings(CLIPTextEmbeddings):
     def __init__(self, config: CLIPTextConfig):
         super().__init__(config)
@@ -39,14 +50,30 @@ class PromptLangCLIPTextEmbeddings(CLIPTextEmbeddings):
             raise ValueError("You have to specify input_dicts")
 
         batches = []
+        pos_modifiers: List[List[PosModifier]] = []
         for batch_idx, batch in enumerate(input_dicts):
             results = []
+            batch_pos_modifiers = []
+            token_idx = 0
             for seg_or_action in batch:
                 if isinstance(seg_or_action, Action):
-                    results.append(seg_or_action.get_result(self.token_embedding))
+                    action_result = seg_or_action.get_result(self.token_embedding)
+                    if isinstance(action_result, tuple):
+                        result, post_modifiers = action_result
+                        if post_modifiers["position_embed_scale"] is not None:
+                            post_modifiers["start_idx"] = token_idx
+                            post_modifiers["end_idx"] = (
+                                token_idx + seg_or_action.token_length()
+                            )
+                            batch_pos_modifiers.append(post_modifiers)
+                    else:
+                        result = action_result
                 else:
-                    results.append(seg_or_action.get_embeddings(self.token_embedding))
+                    result = seg_or_action.get_embeddings(self.token_embedding)
+                results.append(result)
+                token_idx += seg_or_action.token_length()
             batches.append(results)
+            pos_modifiers.append(batch_pos_modifiers)
 
         seq_length = batches[0][0].shape[-2]
 
@@ -60,8 +87,16 @@ class PromptLangCLIPTextEmbeddings(CLIPTextEmbeddings):
             else:
                 embeds.append(torch.cat(batch, dim=-2))
 
-        position_embeddings = self.position_embedding(position_ids)
-        embeddings = torch.cat(embeds, dim=0) + position_embeddings
+        for idx, batch_pos_modifiers in enumerate(pos_modifiers):
+            position_embeddings = self.position_embedding(position_ids)
+            if len(batch_pos_modifiers) > 0:
+                print(f"Found {len(batch_pos_modifiers)} pos modifiers for batch {idx}")
+                for post_modifier in batch_pos_modifiers:
+                    position_embeddings[
+                        0, post_modifier["start_idx"] : post_modifier["end_idx"]
+                    ] *= post_modifier["position_embed_scale"]
+            embeds[idx] = embeds[idx] + position_embeddings
+        embeddings = torch.cat(embeds, dim=0)
 
         return embeddings
 
