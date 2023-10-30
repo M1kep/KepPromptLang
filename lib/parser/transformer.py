@@ -2,7 +2,7 @@ from typing import List
 
 from lark import Transformer, Token
 
-from comfy.sd1_clip import SD1Tokenizer
+from comfy.sd1_clip import SD1Tokenizer, SDTokenizer
 from custom_nodes.KepPromptLang.lib.action.base import Action, ActionArity
 from custom_nodes.KepPromptLang.lib.actions.diff import DiffAction
 from custom_nodes.KepPromptLang.lib.actions.rand import RandAction
@@ -18,7 +18,7 @@ class PromptTransformer(Transformer):
     # def WORD(self, items):
     #     return items
 
-    def __init__(self, tokenizer: SD1Tokenizer):
+    def __init__(self, tokenizer: SDTokenizer):
         super().__init__()
         self.tokenizer = tokenizer
 
