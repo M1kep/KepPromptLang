@@ -7,6 +7,7 @@ from transformers import CLIPTextConfig, modeling_utils
 
 from comfy import model_management
 import comfy.ops
+from comfy.sd1_clip import SD1ClipModel
 from comfy.sdxl_clip import SDXLClipModel
 from custom_nodes.KepPromptLang.lib.action.base import Action
 from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
@@ -15,7 +16,7 @@ from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 
 # Methods with no comment can be assumed to be the same as comfy.sd1_clip.SD1ClipModel
-class PromptLangClipModel(torch.nn.Module):
+class PromptLangSDClipModel(torch.nn.Module):
     """Uses the CLIP transformer encoder for text (from huggingface)"""
     LAYERS = [
         "last",
@@ -211,15 +212,23 @@ class PromptLangClipModel(torch.nn.Module):
             return z_empty.cpu(), first_pooled.cpu()
         return torch.cat(output, dim=-2).cpu(), first_pooled.cpu()
 
+class PromptLangSD1ClipModel(SD1ClipModel):
+    def __init__(self, device="cpu", dtype=None, clip_name="l", clip_model=PromptLangSDClipModel):
+        super().__init__()
+        self.clip_name = clip_name
+        self.clip = "clip_{}".format(self.clip_name)
+        setattr(self, self.clip, clip_model(device=device, dtype=dtype))
+
+
 class PromptLangSDXLClipModel(SDXLClipModel):
     def __init__(self, device="cpu", dtype=None) -> None:
         # Skip SDXLClipModel's init
         super(SDXLClipModel, self).__init__()
-        self.clip_l = PromptLangClipModel(layer="hidden", layer_idx=11, device=device, dtype=dtype)
+        self.clip_l = PromptLangSDClipModel(layer="hidden", layer_idx=11, device=device, dtype=dtype)
         self.clip_l.layer_norm_hidden_state = False
         self.clip_g = PromptLangSDXLClipG(device, dtype)
 
-class PromptLangSDXLClipG(PromptLangClipModel):
+class PromptLangSDXLClipG(PromptLangSDClipModel):
     def __init__(self, device="cpu", max_length=77, freeze=True, layer="penultimate", layer_idx=None, textmodel_path=None, dtype=None):
         if layer == "penultimate":
             layer="hidden"

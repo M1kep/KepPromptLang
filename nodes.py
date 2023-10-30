@@ -12,13 +12,13 @@ from comfy.sd2_clip import SD2ClipModel
 from comfy.sdxl_clip import SDXLClipModel
 from comfy.supported_models_base import ClipTarget
 from custom_nodes.KepPromptLang.lib.clip_model import (
-    PromptLangClipModel,
     PromptLangSDXLClipModel,
+    PromptLangSD1ClipModel,
 )
 
 from custom_nodes.KepPromptLang.lib.tokenizer import (
-    PromptLangTokenizer,
     PromptLangSDXLTokenizer,
+    PromptLangSD1Tokenizer,
 )
 
 
@@ -46,16 +46,17 @@ class SpecialClipLoader:
         if isinstance(source_clip.cond_stage_model, SDXLClipModel):
             clip_target = ClipTarget(PromptLangSDXLTokenizer, PromptLangSDXLClipModel)
             clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.clip_g.embedding_directory)
+            comfy.sd.load_clip_weights(clip.cond_stage_model.clip_g,source_clip.cond_stage_model.clip_g.state_dict())
             comfy.sd.load_clip_weights(
-                clip.cond_stage_model, source_clip.cond_stage_model.state_dict()
+                clip.cond_stage_model.clip_l, source_clip.cond_stage_model.clip_l.state_dict()
             )
         elif isinstance(source_clip, SD2ClipModel):
             raise ValueError("SD2 Clip model is not supported.")
         else:
-            clip_target = ClipTarget(PromptLangTokenizer, PromptLangClipModel)
+            clip_target = ClipTarget(PromptLangSD1Tokenizer, PromptLangSD1ClipModel)
             clip = comfy.sd.CLIP(clip_target, embedding_directory=source_clip.tokenizer.clip_l.embedding_directory)
             comfy.sd.load_clip_weights(
-                clip.cond_stage_model, source_clip.cond_stage_model.clip_l.state_dict()
+                clip.cond_stage_model, source_clip.cond_stage_model.state_dict()
             )
         return (clip,)
 
