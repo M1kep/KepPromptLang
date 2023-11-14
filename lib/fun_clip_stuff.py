@@ -1,5 +1,5 @@
 from typing import Optional, Tuple, Union, List, TypedDict
-from importlib_metadata import version as import_version
+from importlib.metadata import version as import_version
 from packaging import version
 
 import torch
