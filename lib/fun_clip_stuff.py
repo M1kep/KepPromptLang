@@ -1,10 +1,11 @@
 from typing import Optional, Tuple, Union, List, TypedDict
+from importlib_metadata import version as import_version
+from packaging import version
 
 import torch
 from transformers import CLIPTextConfig
 from transformers.modeling_outputs import BaseModelOutputWithPooling
 from transformers.models.clip.modeling_clip import (
-    _expand_mask,
     CLIPTextEmbeddings,
     CLIPTextTransformer,
     CLIPTextModel,
@@ -105,6 +106,40 @@ class PrompLangCLIPTextTransformer(CLIPTextTransformer):
     def __init__(self, config: CLIPTextConfig):
         super().__init__(config)
         self.embeddings = PromptLangCLIPTextEmbeddings(config)
+        self.transformers_version = version.parse(import_version('transformers'))
+
+    def process_attention_mask(self, hidden_states, attention_mask, bsz, seq_len):
+        # Parse the transformer version
+        input_shape = torch.Size([bsz, seq_len])
+
+        v4_30 = version.parse('4.30.0')
+        v4_35 = version.parse('4.35')
+        if self.transformers_version < v4_30:
+            print("Using transformers < 4.30.0")
+            causal_attention_mask = self._build_causal_attention_mask(bsz, seq_len, hidden_states.dtype).to(
+                hidden_states.device)
+        elif v4_30 <= self.transformers_version < v4_35:
+            print("Using transformers >= 4.30.0 and <= 4.34.*")
+            from transformers.models.clip.modeling_clip import _make_causal_mask
+            causal_attention_mask = _make_causal_mask(input_shape, hidden_states.dtype, device=hidden_states.device)
+        else:
+            print("Using transformers >= 4.35")
+            from transformers.modeling_attn_mask_utils import _create_4d_causal_attention_mask
+            causal_attention_mask = _create_4d_causal_attention_mask(
+                input_shape, hidden_states.dtype, device=hidden_states.device
+            )
+
+        # Expand attention_mask if it exists
+        if attention_mask is not None:
+            # Import _expand_mask or _prepare_4d_attention_mask based on version
+            if self.transformers_version < v4_35:
+                from transformers.models.clip.modeling_clip import _expand_mask
+                attention_mask = _expand_mask(attention_mask, hidden_states.dtype)
+            else:
+                from transformers.modeling_attn_mask_utils import _prepare_4d_attention_mask
+                attention_mask = _prepare_4d_attention_mask(attention_mask, hidden_states.dtype)
+
+        return causal_attention_mask, attention_mask
 
     def forward(
             self,
@@ -136,24 +171,8 @@ class PrompLangCLIPTextTransformer(CLIPTextTransformer):
         bsz = len(input_ids)
         # TODO: Properly gather this
         seq_len = 77
-        input_shape = torch.Size([bsz, seq_len])
-        # CLIP's text model uses causal mask, prepare it here.
-        # https://github.com/openai/CLIP/blob/cfcffb90e69f37bf2ff1e988237a0fbe41f33c04/clip/model.py#L324
-        ## VERSION DIFF ##
-        # transformers < 4.30.0
-        if hasattr(self, "_build_causal_attention_mask"):
-            print("Using transformers < 4.30.0")
-            causal_attention_mask = self._build_causal_attention_mask(bsz, seq_len, hidden_states.dtype).to(hidden_states.device)
-        else:
-            # transformers >= 4.30.0
-            print("Using transformers >= 4.30.0")
-            from transformers.models.clip.modeling_clip import _make_causal_mask
-            causal_attention_mask = _make_causal_mask(input_shape, hidden_states.dtype, device=hidden_states.device)
 
-        # expand attention_mask
-        if attention_mask is not None:
-            # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
-            attention_mask = _expand_mask(attention_mask, hidden_states.dtype)
+        causal_attention_mask, attention_mask = self.process_attention_mask(hidden_states, attention_mask, bsz, seq_len)
 
         encoder_outputs = self.encoder(
             inputs_embeds=hidden_states,
