@@ -3,6 +3,9 @@ from custom_nodes.KepPromptLang.lib.actions.diff import DiffAction
 from custom_nodes.KepPromptLang.lib.actions.mult import MultiplyAction
 from custom_nodes.KepPromptLang.lib.actions.neg import NegAction
 from custom_nodes.KepPromptLang.lib.actions.norm import NormAction
+
+from custom_nodes.KepPromptLang.lib.actions.pooled_avg import PooledAvgAction
+from custom_nodes.KepPromptLang.lib.actions.pooler import PoolerAction
 from custom_nodes.KepPromptLang.lib.actions.pos_scale import PosScaleAction
 from custom_nodes.KepPromptLang.lib.actions.post_pos import PostPosAction
 from custom_nodes.KepPromptLang.lib.actions.rand import RandAction
@@ -23,4 +26,6 @@ register_action(AverageAction)
 register_action(ScaleDims)
 register_action(SetDims)
 register_action(PosScaleAction)
+register_action(PoolerAction)
 register_action(PostPosAction)
+register_action(PooledAvgAction)
