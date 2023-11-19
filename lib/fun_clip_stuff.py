@@ -219,7 +219,7 @@ class PrompLangCLIPTextTransformer(CLIPTextTransformer):
                 if isinstance(seg_or_action, Action):
                     idx += seg_or_action.token_length()
                 else:
-                    if seg_or_action.text == '__PAD__':
+                    if seg_or_action.text == "__PAD__" or seg_or_action.text == "[EOT]":
                         break
 
                     # Is a segment, and isn't the pad segment
