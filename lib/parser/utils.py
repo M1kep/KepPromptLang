@@ -24,10 +24,13 @@ def build_prompt_segment(text: str, tokenizer: SDTokenizer) -> PromptSegment:
             if embedding is None:
                 print(f"warning, embedding:{embedding_name} does not exist, ignoring")
             else:
-                if len(embedding.shape) == 1:
-                    tokens.append(embedding)
+                if embedding.shape[1] != tokenizer.embedding_size:
+                    print(f"warning, embedding:{embedding_name} has size {embedding.shape[1]}, expected {tokenizer.embedding_size}, ignoring")
                 else:
-                    tokens.extend(embedding)
+                    if len(embedding.shape) == 1:
+                        tokens.append(embedding)
+                    else:
+                        tokens.extend(embedding)
 
             if leftover != "":
                 word = leftover

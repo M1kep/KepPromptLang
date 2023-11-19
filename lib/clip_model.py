@@ -108,12 +108,11 @@ class PromptLangSDClipModel(torch.nn.Module):
                                 tokens_temp += [next_new_token]
                                 next_new_token += 1
                             else:
-                                print("WARNING: shape mismatch when trying to apply embedding, embedding will be ignored",
+                                raise Exception("WARNING: shape mismatch when trying to apply embedding. Should have been caught during tokenization.",
                                       tid_or_tensor.shape[0], current_embeds.weight.shape[1])
                     if len(tokens_temp) < segment_length:
-                        # Pretty sure this is only needed if the embedding is not the same size as the CLIP embedding
-                        print("WARNING: segment length mismatch, padding with EOS token")
-                        tokens_temp.extend([self.empty_tokens[0][-1] * (segment_length - len(tokens_temp))])
+                        # This should never happen...
+                        raise Exception("Segment size mismatch. Please submit an issue on Github.")
                     segment.tokens = tokens_temp
 
         n = token_dict_size
