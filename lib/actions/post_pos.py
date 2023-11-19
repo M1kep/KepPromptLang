@@ -13,8 +13,14 @@ from custom_nodes.KepPromptLang.lib.action.base import (
 
 class PostPosAction(SingleArgAction):
     grammar = 'postPos(" arg+ ")"'
-    name = "postPos"
     chars = ["[", "]"]
+
+    display_name = "Ignore Positional Embeddings"
+    action_name = "postPos"
+    description = "Prevents positional embeddings from being applied to the provided segments or actions."
+    usage_examples = [
+        "A postPos(cat) on a rainy day",
+    ]
 
     def __init__(self, args):
         super().__init__(args)

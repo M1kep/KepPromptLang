@@ -17,6 +17,14 @@ class RandAction(MultiArgAction):
     name = "rand"
     chars = None
 
+    display_name = "Random Embedding"
+    action_name = "rand"
+    description = "Returns a random embedding of the specified token length, with the values optionally bounded by the second and third arguments."
+    usage_examples = [
+        "A rand(1) cat",
+        "A rand(1|-1|1) cat",
+    ]
+
     parsed_token_length = 0
     range_min = 0
     range_max = 1

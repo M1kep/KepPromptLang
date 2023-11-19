@@ -11,8 +11,14 @@ from custom_nodes.KepPromptLang.lib.parser.registration import register_action
 
 class SumAction(MultiArgAction):
     grammar = 'sum(" arg ("|" arg)+ ")"'
-    name = "sum"
     chars = ["+", "+"]
+
+    display_name = "Sum"
+    action_name = "sum"
+    description = "Adds the embeddings of the provided segments or actions."
+    usage_examples = [
+        "A happy sum(cat|dog|shark)",
+    ]
 
     def __init__(self, args: List[List[Union[PromptSegment, Action]]]) -> None:
         super().__init__(args)

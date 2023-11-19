@@ -13,8 +13,14 @@ from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
 
 class PosScaleAction(MultiArgAction):
     grammar = 'posScale(" arg+ ")"'
-    name = "posScale"
     chars = ["[", "]"]
+
+    display_name = "Positional Embedding Scale"
+    action_name = "posScale"
+    description = "Scales(Multiplies) the positional embeddings of the provided segments or actions by the multiplier."
+    usage_examples = [
+        "A posScale(cat|1.5) on a rainy day",
+    ]
 
     def __init__(self, args: List[List[SegOrAction]]) -> None:
         super().__init__(args)

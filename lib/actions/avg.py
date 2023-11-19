@@ -12,8 +12,16 @@ from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 class AverageAction(MultiArgAction):
     grammar = 'avg(" arg "|" arg "|" arg ")"'
-    name = "avg"
     chars = ["+", "+"]
+
+    display_name = "Average"
+    action_name = "avg"
+    description = "Performs a weighted average between two segments or actions. The recommended weight is 0 - 1."
+    usage_examples = [
+        "avg(The cat is|The dog is|0.5)",
+        "avg(Cat|Dog|0.5)",
+    ]
+
 
     def __init__(self, args: List[List[Union[PromptSegment, Action]]]) -> None:
         super().__init__(args)

@@ -11,8 +11,16 @@ from custom_nodes.KepPromptLang.lib.parser.registration import register_action
 
 class DiffAction(MultiArgAction):
     grammar = 'diff(" arg ("|" arg)* ")"'
-    name = "diff"
     chars = ["-", "-"]
+
+    display_name = "Difference"
+    action_name = "diff"
+    description = "Subtracts the segments in the order they are given. The first segment is subtracted from the second, then the third from the result, and so on."
+    usage_examples = [
+        "diff(The cat is|The dog is)",
+        "diff(Cat|Dog)",
+        "sum(diff(king|man)|woman)",
+    ]
 
     def __init__(self, args: List[List[Union[PromptSegment, Action]]]):
         super().__init__(args)

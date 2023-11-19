@@ -7,8 +7,15 @@ from custom_nodes.KepPromptLang.lib.parser.registration import register_action
 
 class NegAction(SingleArgAction):
     grammar = 'neg(" arg+ ")"'
-    name = "neg"
     chars = ["[", "]"]
+
+    display_name = "Negate"
+    action_name = "neg"
+    description = "Negates the provided segments or actions."
+    usage_examples = [
+        "neg(cat)",
+        "sum(king|neg(man)|women)",
+    ]
 
     def token_length(self) -> int:
         """

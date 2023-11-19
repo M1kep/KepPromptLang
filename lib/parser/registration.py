@@ -9,9 +9,9 @@ def register_action(action: Type[Action]) -> None:
 
     :rtype: object
     """
-    if action.name in action_registry:
-        raise ValueError(f"Action {action.name} already registered")
-    action_registry[str(action.name)] = action
+    if action.action_name in action_registry:
+        raise ValueError(f"Action {action.action_name} already registered")
+    action_registry[str(action.action_name)] = action
 
 def get_action_by_name(name: str) -> Type[Action]:
     if name not in action_registry:

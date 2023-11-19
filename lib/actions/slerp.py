@@ -12,8 +12,14 @@ from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 class SlerpAction(MultiArgAction):
     grammar = 'slerp(" arg "|" arg "|" arg ")"'
-    name = "slerp"
     chars = ["+", "+"]
+
+    display_name = "Slerp"
+    action_name = "slerp"
+    description = "Performs a slerp(Interpolation) between two segments or actions, with the given weight. The recommended weight is 0 - 1"
+    usage_examples = [
+        "The slerp(cat|dog|0.5) is happy",
+    ]
 
     def __init__(self, args: List[List[Union[PromptSegment, Action]]]) -> None:
         super().__init__(args)

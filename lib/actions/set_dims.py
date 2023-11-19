@@ -10,10 +10,14 @@ from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 class SetDims(MultiArgAction):
     grammar = 'setDims(" arg ("|" arg)* ")"'
-    name = "setDims"
-    description = "Sets the specified dimensions of the input embeddings to the specified value"
-    example = "'The scaleDims(cat|4,1.5|76,1.2) is happy' scales the 4th dimension by 1.5 and the 76th dimension by 1.2 for the word 'cat'"
     chars = ["-", "-"]
+
+    display_name = "Set Dimensions"
+    action_name = "setDims"
+    description = "Sets the specified dimensions of the input embeddings to the specified value"
+    usage_examples = [
+        "The setDims(cat|4, -0.01253|76, 1.2) is happy"
+    ]
 
     def __init__(self, args: List[List[Union[PromptSegment, Action]]]):
         super().__init__(args)

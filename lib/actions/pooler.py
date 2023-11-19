@@ -14,8 +14,16 @@ from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 class PoolerAction(SingleArgAction):
     grammar = 'pooler(" arg+ ")"'
-    name = "_exp-pooler"
     chars = ["[", "]"]
+
+    display_name = "Pooler Output(Experimental)"
+    action_name = "_exp-pooler"
+    description = "Processes the provided segments or actions fully through CLIP and returns the pooler_output from the transformer"
+    usage_examples = [
+        "A cat on a _exp-pooler(beautiful sunny day)",
+        "A _exp-pooler(broken glass) bottle",
+    ]
+
 
     def __init__(self, args):
         super().__init__(args)

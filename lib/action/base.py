@@ -39,8 +39,22 @@ class Action(ABC):
 
     @property
     @abstractmethod
-    def name(self) -> str:
+    def display_name(self) -> str:
         pass
+
+    @property
+    @abstractmethod
+    def action_name(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def description(self) -> str:
+        pass
+
+    @property
+    def usage_examples(self) -> List[str]:
+        return []
 
     @property
     @abstractmethod
@@ -116,7 +130,7 @@ class SingleArgAction(Action, ABC):
         self.arg = arg
 
     def __repr__(self) -> str:
-        return f"{self.name}({self.arg})"
+        return f"{self.display_name}({self.arg})"
 
 class MultiArgAction(Action, ABC):
     arity = ActionArity.MULTI

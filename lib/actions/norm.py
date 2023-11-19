@@ -10,8 +10,15 @@ from custom_nodes.KepPromptLang.lib.parser.registration import register_action
 
 class NormAction(SingleArgAction):
     grammar = 'norm(" arg+ ")"'
-    name = "norm"
     chars = None
+
+    display_name = "Normalize"
+    action_name = "norm"
+    description = "Normalizes the provided segments or actions."
+    usage_examples = [
+        "norm(cat)",
+        "sum(cat|norm(sum(tiger|fish)))",
+    ]
 
     def token_length(self) -> int:
         """

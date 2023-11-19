@@ -13,8 +13,15 @@ from custom_nodes.KepPromptLang.lib.parser.registration import register_action
 
 class MultiplyAction(MultiArgAction):
     grammar = 'mult(" arg+ ")"'
-    name = "mult"
     chars = ["[", "]"]
+
+    display_name = "Multiply"
+    action_name = "mult"
+    description = "Multiplies the provided segments or actions by the multiplier."
+    usage_examples = [
+        "mult(The cat is|2.5)",
+        "mult(Cat|-1)",
+    ]
 
     def __init__(self, args: List[List[SegOrAction]]) -> None:
         super().__init__(args)

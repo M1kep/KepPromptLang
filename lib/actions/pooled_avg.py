@@ -14,8 +14,15 @@ from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 class PooledAvgAction(SingleArgAction):
     grammar = 'pooledAvg(" arg+ ")"'
-    name = "_exp-pooledAvg"
     chars = ["[", "]"]
+
+    display_name = "Pooled Average(Experimental)"
+    action_name = "_exp-pooledAvg"
+    description = "Processes the provided segments or actions fully through CLIP and creates a pooled average of the last hidden state by averaging the last hidden state of each token."
+    usage_examples = [
+        "A cat on a _exp-pooledAvg(beautiful sunny day)",
+        "A _exp-pooledAvg(broken glass) bottle",
+    ]
 
     def __init__(self, args):
         super().__init__(args)
