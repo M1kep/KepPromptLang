@@ -10,6 +10,10 @@ from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
 
 
 class PromptTransformer(Transformer):
+    """
+    Transforms the parsed prompt into a list of segments and actions
+    Types from the grammar are mapped to the methods in this class
+    """
     # def WORD(self, items):
     #     return items
 
@@ -19,10 +23,7 @@ class PromptTransformer(Transformer):
 
     def item(self, items: List[Token]):
         for item in items:
-            if isinstance(item, Action):
-                return item
-
-            if isinstance(item, PromptSegment):
+            if isinstance(item, (Action, PromptSegment)):
                 return item
 
             if item.type == "WORD":
@@ -36,7 +37,7 @@ class PromptTransformer(Transformer):
             elif item.type == "embedding":
                 return build_prompt_segment(item, self.tokenizer)
             elif item.type == "function":
-                return item
+                raise Exception("Unexpected type in prompt transformer: function. Please report this issue on GitHub.")
             else:
                 raise Exception("Unknown item type: " + str(item.type))
 
