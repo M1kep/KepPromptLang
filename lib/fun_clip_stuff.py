@@ -193,8 +193,7 @@ class PrompLangCLIPTextTransformer(CLIPTextTransformer):
         hidden_states = self.embeddings(input_dicts=input_ids)
 
         bsz = len(input_ids)
-        # TODO: Properly gather this
-        seq_len = 77
+        seq_len = hidden_states.shape[1]
 
         causal_attention_mask, attention_mask = self.process_attention_mask(hidden_states, attention_mask, bsz, seq_len)
 
