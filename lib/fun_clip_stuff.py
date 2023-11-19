@@ -190,6 +190,13 @@ class PrompLangCLIPTextTransformer(CLIPTextTransformer):
         # input_shape = input_ids.size()
         # input_ids = input_ids.view(-1, input_shape[-1])
 
+        for batch_idx, batch in enumerate(input_ids):
+            for seg_or_action in batch:
+                if isinstance(seg_or_action, Action):
+                    seg_or_action.process_with_transformer(
+                        self, self.embeddings.token_embedding
+                    )
+
         hidden_states = self.embeddings(input_dicts=input_ids)
 
         bsz = len(input_ids)
