@@ -1,17 +1,15 @@
-from typing import Union, List
+from typing import List
 
-import torch
+from torch import Tensor
 from torch.nn import Embedding
 
-from custom_nodes.KepPromptLang.lib.actions.action_utils import get_embedding
-from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
-from custom_nodes.KepPromptLang.lib.action.base import Action, MultiArgAction
-from custom_nodes.KepPromptLang.lib.parser.registration import register_action
+from .action_utils import add_with_broadcast, concat_embeddings
+from .base import MultiArgAction
+from .types import SegOrAction
 
 
 class SumAction(MultiArgAction):
     grammar = 'sum(" arg ("|" arg)+ ")"'
-    chars = ["+", "+"]
 
     display_name = "Sum"
     action_name = "sum"
@@ -20,66 +18,17 @@ class SumAction(MultiArgAction):
         "A happy sum(cat|dog|shark)",
     ]
 
-    def __init__(self, args: List[List[Union[PromptSegment, Action]]]) -> None:
+    def __init__(self, args: List[List[SegOrAction]]) -> None:
         super().__init__(args)
-
         self.base_arg = args[0]
         self.additional_args = args[1:]
 
     def token_length(self) -> int:
-        # Sum adds to the embeddings of the base segment, so the length is the length of the base segment
-        return sum(seg_or_action.token_length() for seg_or_action in self.base_arg)
+        return sum(s.token_length() for s in self.base_arg)
 
-    def get_result(self, embedding_module: Embedding) -> torch.Tensor:
-        # Calculate the embeddings for the base segment
-        all_base_embeddings = [
-            get_embedding(seg_or_action, embedding_module)
-            for seg_or_action in self.base_arg
-        ]
-
-        result = torch.cat(all_base_embeddings, dim=1)
-
+    def get_result(self, embedding_module: Embedding) -> Tensor:
+        result = concat_embeddings(self.base_arg, embedding_module)
         for arg in self.additional_args:
-            all_arg_embeddings = [
-                get_embedding(seg_or_action, embedding_module) for seg_or_action in arg
-            ]
-
-            arg_embedding = torch.cat(all_arg_embeddings, dim=1)
-
-            if (
-                arg_embedding.shape[-2] == 1
-                or result.shape[-2] == arg_embedding.shape[-2]
-            ):
-                result = result.add(arg_embedding)
-            else:
-                print(
-                    "WARNING: shape mismatch when trying to apply sum, arg will be averaged"
-                )
-                result = result.add(
-                    torch.mean(arg_embedding, dim=1, keepdim=True)
-                )
-
+            arg_embedding = concat_embeddings(arg, embedding_module)
+            result = add_with_broadcast(result, arg_embedding, op="add")
         return result
-
-    # def __repr__(self):
-    #     return f"sum(\n\tbase_segment={self.base_segment},\n\targs={self.args}\n)"
-    def __repr__(self) -> str:
-        return f"sum({', '.join(map(str, self.additional_args))})"
-
-    def depth_repr(self, depth=1):
-        out = "NudgeAction(\n"
-        if isinstance(self.base_arg, Action):
-            base_segment_repr = self.base_arg.depth_repr(depth + 1)
-            out += "\t" * depth + f"base_segment={base_segment_repr}\n"
-        else:
-            out += "\t" * depth + f"base_segment={self.base_arg.depth_repr()},\n"
-
-        if isinstance(self.additional_args, Action):
-            target_repr = self.additional_args.depth_repr(depth + 1)
-            out += "\t" * depth + f"target={target_repr},\n"
-        else:
-            out += "\t" * depth + f"target={self.additional_args.depth_repr()},\n"
-        out += "\t" * depth + f"weight={self.weight},\n"
-        out += "\t" * (depth - 1) + ")"
-        return out
-

@@ -1,16 +1,16 @@
-from typing import List, Union
+from typing import List, Tuple
 
-import torch
+from torch import Tensor
 from torch.nn import Embedding
 
-from custom_nodes.KepPromptLang.lib.action.base import MultiArgAction, Action
-from custom_nodes.KepPromptLang.lib.actions.action_utils import get_embedding
-from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
+from ..parser.prompt_segment import PromptSegment
+from .action_utils import concat_embeddings, get_total_length
+from .base import Action, MultiArgAction
+from .types import SegOrAction
 
 
 class ScaleDims(MultiArgAction):
     grammar = 'scaleDims(" arg ("|" arg)* ")"'
-    chars = ["-", "-"]
 
     display_name = "Scale Dimensions"
     action_name = "scaleDims"
@@ -19,58 +19,50 @@ class ScaleDims(MultiArgAction):
         "The scaleDims(cat|4,1.5|76,1.2) is happy",
     ]
 
-    def __init__(self, args: List[List[Union[PromptSegment, Action]]]):
+    def __init__(self, args: List[List[SegOrAction]]):
         super().__init__(args)
-
         self.base_arg = args[0]
-        self._parse_scale_args(args[1:])
-
-
-    def _parse_scale_args(self, args: List[List[Union[PromptSegment, Action]]]) -> None:
-        # scaleDims scale args should have format of "<dim>,<scale>" where dim is the dimension to scale and scale is the amount to scale it by
-        # scaleDims(some words|4,1.5|76,1.2)
-        self.scale_args = []
-        for arg in args:
-            if isinstance(arg, Action):
-                raise ValueError("ScaleDims scale args must be in the format of <dim>,<scale>(e.g. 4,1.5) but got an action")
-
-            if len(arg) != 1:
-                raise ValueError("ScaleDims scale args must be in the format of <dim>,<scale>(e.g. 4,1.5) but got multiple segments")
-            extracted_arg = arg[0]
-            assert isinstance(extracted_arg, PromptSegment)
-
-            if "," not in extracted_arg.text:
-                raise ValueError("ScaleDims scale args must be in the format of <dim>,<scale>(e.g. 4,1.5) but got a segment with no comma: " + extracted_arg.text)
-
-            # Split prompt segment into text and scale args
-            dim, scale = extracted_arg.text.split(",")
-            try:
-                # TODO: Check that dim is within the bounds of the embedding
-                parsed_dim = int(dim)
-            except ValueError:
-                raise ValueError("ScaleDims scale args must be in the format of <dim>,<scale>(e.g. 4,1.5) but got a segment with a non-integer dim: " + str(dim))
-
-            try:
-                parsed_scale = float(scale)
-            except ValueError:
-                raise ValueError("ScaleDims scale args must be in the format of <dim>,<scale>(e.g. 4,1.5) but got a segment with a non-float scale: " + str(scale))
-
-            self.scale_args.append((parsed_dim, parsed_scale))
-
+        self.scale_args: List[Tuple[int, float]] = _parse_dim_value_pairs(args[1:], action_name="ScaleDims")
 
     def token_length(self) -> int:
-        # scaleDims modifies the embeddings of the base segment, so the length is the length of the base segment
-        return sum(seg_or_action.token_length() for seg_or_action in self.base_arg)
+        return get_total_length(self.base_arg)
 
-    def get_result(self, embedding_module: Embedding) -> torch.Tensor:
-        # Calculate the embeddings for the base segment
-        all_base_embeddings = [
-            get_embedding(seg_or_action, embedding_module)
-            for seg_or_action in self.base_arg
-        ]
-
-        base_embeddings = torch.cat(all_base_embeddings, dim=1)
+    def get_result(self, embedding_module: Embedding) -> Tensor:
+        embeddings = concat_embeddings(self.base_arg, embedding_module)
         for dim, scale in self.scale_args:
-            base_embeddings[0, :, dim] *= scale
+            embeddings[0, :, dim] *= scale
+        return embeddings
 
-        return base_embeddings
+
+def _parse_dim_value_pairs(
+    args: List[List[SegOrAction]],
+    *,
+    action_name: str,
+) -> List[Tuple[int, float]]:
+    """Parse args of the form `<dim>,<value>` into `(int, float)` pairs.
+
+    Used by both scaleDims and setDims.
+    """
+    pairs: List[Tuple[int, float]] = []
+    for arg in args:
+        if isinstance(arg, Action):
+            raise ValueError(f"{action_name} args must be in the format <dim>,<value> but got an action")
+        if len(arg) != 1:
+            raise ValueError(f"{action_name} args must be a single segment of <dim>,<value>")
+
+        seg = arg[0]
+        assert isinstance(seg, PromptSegment)
+        if "," not in seg.text:
+            raise ValueError(f"{action_name} args must be <dim>,<value> but got: {seg.text!r}")
+
+        dim_str, value_str = seg.text.split(",", 1)
+        try:
+            dim = int(dim_str)
+        except ValueError:
+            raise ValueError(f"{action_name} dim must be an integer; got {dim_str!r}")
+        try:
+            value = float(value_str)
+        except ValueError:
+            raise ValueError(f"{action_name} value must be a float; got {value_str!r}")
+        pairs.append((dim, value))
+    return pairs

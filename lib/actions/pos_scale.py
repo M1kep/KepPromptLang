@@ -1,23 +1,21 @@
-from typing import Tuple, List
+from typing import List, Tuple
 
-import torch
+from torch import Tensor
 from torch.nn import Embedding
 
-from custom_nodes.KepPromptLang.lib.action.base import (
-    Action,
-    PostModifiers,
-    MultiArgAction,
-)
-from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
+from .action_utils import concat_embeddings, get_total_length, parse_numeric_arg
+from .base import MultiArgAction, PostModifiers
+from .types import SegOrAction
 
 
 class PosScaleAction(MultiArgAction):
     grammar = 'posScale(" arg+ ")"'
-    chars = ["[", "]"]
 
     display_name = "Positional Embedding Scale"
     action_name = "posScale"
-    description = "Scales(Multiplies) the positional embeddings of the provided segments or actions by the multiplier."
+    description = (
+        "Scales (multiplies) the positional embeddings of the provided segments or actions by the multiplier."
+    )
     usage_examples = [
         "A posScale(cat|1.5) on a rainy day",
     ]
@@ -25,47 +23,15 @@ class PosScaleAction(MultiArgAction):
     def __init__(self, args: List[List[SegOrAction]]) -> None:
         super().__init__(args)
         if len(args) != 2:
-            raise ValueError("PosScale action should have exactly two arguments")
-
+            raise ValueError("PosScale action expects exactly two arguments")
         self.target_arg = args[0]
-        self._parse_multiplier(args[1])
-
-    def _parse_multiplier(self, arg: List[SegOrAction]) -> None:
-        if len(arg) != 1:
-            raise ValueError(
-                "PosScale actions multiplier should have exactly one segment"
-            )
-
-        multiplier_seg_or_action = arg[0]
-
-        if isinstance(multiplier_seg_or_action, Action):
-            raise ValueError("PosScale actions multiplier must be a number")
-
-        try:
-            self.parsed_multiplier = float(multiplier_seg_or_action.text)
-        except ValueError:
-            raise ValueError(
-                "PosScale action should have an integer/float as the multiplier"
-            )
+        self.parsed_multiplier = parse_numeric_arg(
+            args[1], action_name="PosScale", role="multiplier", cast=float
+        )
 
     def token_length(self) -> int:
-        """
-        PosScale modifies the posional embeddings of the base segment, so the length is the length of the base segment
-        :return:
-        """
-        total_length = 0
-        for seg_or_action in self.target_arg:
-            total_length += seg_or_action.token_length()
+        return get_total_length(self.target_arg)
 
-        return total_length
-
-    def get_result(self, embedding_module: Embedding) -> Tuple[torch.Tensor, PostModifiers]:
-        all_embeddings = []
-        for seg_or_action in self.target_arg:
-            if isinstance(seg_or_action, Action):
-                all_embeddings.append(seg_or_action.get_result(embedding_module))
-            else:
-                all_embeddings.append(seg_or_action.get_embeddings(embedding_module))
-
-        target_embeddings = torch.cat(all_embeddings, dim=1)
-        return target_embeddings, {"position_embed_scale": self.parsed_multiplier}
+    def get_result(self, embedding_module: Embedding) -> Tuple[Tensor, PostModifiers]:
+        target_embeddings = concat_embeddings(self.target_arg, embedding_module)
+        return target_embeddings, PostModifiers(position_embed_scale=self.parsed_multiplier)

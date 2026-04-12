@@ -1,242 +1,217 @@
-import contextlib
-import os
-from typing import List
+"""DSL-aware CLIP text encoders.
+
+These subclass ComfyUI's `SDClipModel` and override `encode_token_weights` to:
+
+  1. Walk our `List[List[SegOrAction]]` token structure.
+  2. Resolve each `Action` into an embedding tensor (and optional position-embedding
+     post-modifiers) via `Action.get_result(token_embedding)`.
+  3. Concatenate per-batch embeddings into `[B, seq, hidden]`.
+  4. Pass straight to `self.transformer(None, mask, embeds=..., num_tokens=...)`.
+
+Position-embedding-modifying actions (`posScale`, `postPos`) are supported without
+patching the transformer — see `_apply_pos_modifiers`.
+"""
+
+import dataclasses
+from typing import List, Tuple
 
 import torch
-from transformers import CLIPTextConfig, modeling_utils
+from torch import Tensor
+from torch.nn import Embedding
 
-from comfy import model_management
-import comfy.ops
-from comfy.sd1_clip import SD1ClipModel
-from comfy.sdxl_clip import SDXLClipModel
-from custom_nodes.KepPromptLang.lib.action.base import Action
-from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
-from custom_nodes.KepPromptLang.lib.fun_clip_stuff import PromptLangTextModel
-from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
+from comfy import sd1_clip, sdxl_clip
+
+from .actions.base import Action, PostModifiers
+from .actions.types import SegOrAction
 
 
-# Methods with no comment can be assumed to be the same as comfy.sd1_clip.SD1ClipModel
-class PromptLangSDClipModel(torch.nn.Module):
-    """Uses the CLIP transformer encoder for text (from huggingface)"""
-    LAYERS = [
-        "last",
-        "pooled",
-        "hidden"
-    ]
+class PromptLangSDClipModel(sd1_clip.SDClipModel):
+    """Drop-in replacement for SDClipModel that consumes our segment/action token stream."""
 
-    def __init__(self, version="openai/clip-vit-large-patch14", device="cpu", max_length=77,
-                 freeze=True, layer="last", layer_idx=None, textmodel_json_config=None,
-                 textmodel_path=None, dtype=None):  # clip-vit-base-patch32
-        super().__init__()
-        assert layer in self.LAYERS
-        self.num_layers = 12
-        if textmodel_path is not None:
-            # Our transformer
-            self.transformer = PromptLangTextModel.from_pretrained(textmodel_path)
-        else:
-            if textmodel_json_config is None:
-                # TODO: Maybe re-use clip config?
-                # Config could come from cond_stage_model.transformer.config
-                # Copied clip_config
-                textmodel_json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_config.json")
-            config = CLIPTextConfig.from_json_file(textmodel_json_config)
-            self.num_layers = config.num_hidden_layers
-            with comfy.ops.use_comfy_ops(device, dtype):
-                with modeling_utils.no_init_weights():
-                    # Our transformer
-                    self.transformer = PromptLangTextModel(config)
+    def encode_token_weights(self, prompt_segments: List[List[SegOrAction]]):  # type: ignore[override]
+        device = self._resolve_device()
+        embedding_module = self.transformer.get_input_embeddings()
 
-        if dtype is not None:
-            self.transformer.to(dtype)
-        self.max_length = max_length
-        if freeze:
-            self.freeze()
-        self.layer = layer
-        self.layer_idx = None
-        self.empty_tokens = [[49406] + [49407] * 76]
-        self.text_projection = torch.nn.Parameter(torch.eye(self.transformer.get_input_embeddings().weight.shape[1]))
-        self.logit_scale = torch.nn.Parameter(torch.tensor(4.6055))
+        embeds, pos_modifiers_per_batch = _build_embeddings(prompt_segments, embedding_module, device)
+        attention_mask, num_tokens = _build_attention_mask(
+            prompt_segments, device, end_token=self.special_tokens.get("end")
+        )
 
-        self.layer_norm_hidden_state = True
-        if layer == "hidden":
-            assert layer_idx is not None
-            assert abs(layer_idx) <= self.num_layers
-            self.clip_layer(layer_idx)
-        self.layer_default = (self.layer, self.layer_idx)
+        embeds_for_transformer = _apply_pos_modifiers(
+            embeds, pos_modifiers_per_batch, position_embedding=self._get_position_embedding()
+        )
 
-    def freeze(self):
-        self.transformer = self.transformer.eval()
-        # self.train = disabled_train
-        for param in self.parameters():
-            param.requires_grad = False
+        attention_mask_model = attention_mask if self.enable_attention_masks else None
 
-    def clip_layer(self, layer_idx):
-        if abs(layer_idx) >= self.num_layers:
-            self.layer = "last"
-        else:
-            self.layer = "hidden"
-            self.layer_idx = layer_idx
+        outputs = self.transformer(
+            None,
+            attention_mask_model,
+            embeds=embeds_for_transformer,
+            num_tokens=num_tokens,
+            intermediate_output=self.layer_idx if self.layer == "hidden" else None,
+            final_layer_norm_intermediate=self.layer_norm_hidden_state,
+            dtype=torch.float32,
+        )
 
-    def reset_clip_layer(self):
-        self.layer = self.layer_default[0]
-        self.layer_idx = self.layer_default[1]
+        z = outputs[0].float() if self.layer == "last" else outputs[1].float()
 
-    # Completely changed to support Segments and actions
-    def set_up_textual_embeddings(self, tokens: List[List[SegOrAction]], current_embeds):
-        next_new_token = token_dict_size = current_embeds.weight.shape[0] - 1
-        embedding_weights = []
+        pooled_output = None
+        if len(outputs) >= 3:
+            if not self.return_projected_pooled and len(outputs) >= 4 and outputs[3] is not None:
+                pooled_output = outputs[3].float()
+            elif outputs[2] is not None:
+                pooled_output = outputs[2].float()
 
-        # For each batch
-        for batch in tokens:
-            for seg_or_action in batch:
-                if isinstance(seg_or_action, Action):
-                    segments = seg_or_action.get_all_segments()
+        return z, pooled_output
+
+    def _resolve_device(self):
+        if self.execution_device is not None:
+            return self.execution_device
+        return self.transformer.get_input_embeddings().weight.device
+
+    def _get_position_embedding(self) -> Embedding:
+        """Reach into ComfyUI's CLIPTextModel for the position-embedding table.
+
+        Isolated so a ComfyUI internal refactor only needs one fix.
+        """
+        return self.transformer.text_model.embeddings.position_embedding
+
+
+class PromptLangSDXLClipG(sdxl_clip.SDXLClipG, PromptLangSDClipModel):
+    """SDXL's larger CLIP-G text encoder, with our DSL-aware encode_token_weights."""
+
+
+def _build_embeddings(
+    batches: List[List[SegOrAction]],
+    embedding_module: Embedding,
+    device,
+) -> Tuple[Tensor, List[List[PostModifiers]]]:
+    """Run actions/segments to produce per-batch embedding tensors and post-modifier lists."""
+    per_batch_embeds: List[Tensor] = []
+    per_batch_modifiers: List[List[PostModifiers]] = []
+
+    for batch in batches:
+        pieces: List[Tensor] = []
+        modifiers: List[PostModifiers] = []
+        token_idx = 0
+
+        for seg_or_action in batch:
+            if isinstance(seg_or_action, Action):
+                result = seg_or_action.get_result(embedding_module)
+                if isinstance(result, tuple):
+                    tensor, post_mods = result
+                    end_idx = token_idx + seg_or_action.token_length()
+                    modifiers.append(dataclasses.replace(post_mods, start_idx=token_idx, end_idx=end_idx))
                 else:
-                    segments = [seg_or_action]
-
-                for segment in segments:
-                    tokens_temp = []
-                    segment_length = segment.token_length()
-                    for tid_or_tensor in segment.tokens:
-                        if isinstance(tid_or_tensor, int):
-                            if tid_or_tensor == token_dict_size:  # Is EOS token
-                                tid_or_tensor = -1 # Set to -1 so that it can be replaced with the EOS token later
-                            tokens_temp += [tid_or_tensor]
-                        else:
-                            if tid_or_tensor.shape[0] == current_embeds.weight.shape[1]:
-                                embedding_weights += [tid_or_tensor]
-                                tokens_temp += [next_new_token]
-                                next_new_token += 1
-                            else:
-                                raise Exception("WARNING: shape mismatch when trying to apply embedding. Should have been caught during tokenization.",
-                                      tid_or_tensor.shape[0], current_embeds.weight.shape[1])
-                    if len(tokens_temp) < segment_length:
-                        # This should never happen...
-                        raise Exception("Segment size mismatch. Please submit an issue on Github.")
-                    segment.tokens = tokens_temp
-
-        n = token_dict_size
-        if len(embedding_weights) > 0:
-            # Create new embedding, with size of current embedding + number of new embeddings
-            new_embedding = torch.nn.Embedding(next_new_token + 1, current_embeds.weight.shape[1],
-                                               device=current_embeds.weight.device, dtype=current_embeds.weight.dtype)
-            # Copy current embedding weights to new embedding
-            new_embedding.weight[:token_dict_size] = current_embeds.weight[:-1]
-            # Add new embeddings
-            for embed in embedding_weights:
-                new_embedding.weight[n] = embed
-                n += 1
-
-            # Set re-add the EOS token
-            new_embedding.weight[n] = current_embeds.weight[-1]  # EOS embedding
-            self.transformer.set_input_embeddings(new_embedding)
-
-
-        for batch in tokens:
-            for seg_or_action in batch:
-                if isinstance(seg_or_action, Action):
-                    segments = seg_or_action.get_all_segments()
-                else:
-                    segments = [seg_or_action]
-
-                for segment in segments:
-                    for tokenIdx in range(len(segment.tokens)):
-                        if segment.tokens[tokenIdx] == -1:
-                            segment.tokens[tokenIdx] = n
-
-    # Support our set_up_textual_embeddings which modifies the input embeddings
-    def forward(self, tokens):
-        backup_embeds = self.transformer.get_input_embeddings()
-        device = backup_embeds.weight.device
-        self.set_up_textual_embeddings(tokens, backup_embeds)
-        # tokens = torch.LongTensor(tokens).to(device)
-
-        if backup_embeds.weight.dtype != torch.float32:
-            precision_scope = torch.autocast
-        else:
-            precision_scope = contextlib.nullcontext
-
-        with precision_scope(model_management.get_autocast_device(device)):
-            outputs = self.transformer(input_ids=tokens, output_hidden_states=self.layer == "hidden")
-            self.transformer.set_input_embeddings(backup_embeds)
-
-            if self.layer == "last":
-                z = outputs.last_hidden_state
-            elif self.layer == "pooled":
-                z = outputs.pooler_output[:, None, :]
+                    tensor = result
             else:
-                z = outputs.hidden_states[self.layer_idx]
-                if self.layer_norm_hidden_state:
-                    z = self.transformer.text_model.final_layer_norm(z)
+                tensor = seg_or_action.get_embeddings(embedding_module)
+            pieces.append(tensor)
+            token_idx += seg_or_action.token_length()
 
-            pooled_output = outputs.pooler_output
-            if self.text_projection is not None:
-                pooled_output = pooled_output.float().to(self.text_projection.device) @ self.text_projection.float()
-        return z.float(), pooled_output.float()
+        # One cat+cast per batch instead of per-piece — avoids N kernels for N segments.
+        per_batch_embeds.append(torch.cat(pieces, dim=1).to(device=device, dtype=torch.float32))
+        per_batch_modifiers.append(modifiers)
 
-    def encode(self, tokens):
-        return self(tokens)
-
-    def load_sd(self, sd):
-        if "text_projection" in sd:
-            self.text_projection[:] = sd.pop("text_projection")
-        if "text_projection.weight" in sd:
-            self.text_projection[:] = sd.pop("text_projection.weight").transpose(0, 1)
-        return self.transformer.load_state_dict(sd, strict=False)
-
-    # Changed from comfy.sd1_clip.ClipTokenWeightEncoder
-    # Changed to use PromptSegments
-    def encode_token_weights(self, prompt_segments: List[List[SegOrAction]]):
-        to_encode = [[PromptSegment(text="_Empty Batch_", tokens=self.empty_tokens[0])]]
-        for batch in prompt_segments:
-            to_encode.append(batch)
-
-        out, pooled = self.encode(to_encode)
-        z_empty = out[0:1]
-        if pooled.shape[0] > 1:
-            first_pooled = pooled[1:2]
-        else:
-            first_pooled = pooled[0:1]
-
-        output = []
-        for k in range(1, out.shape[0]):
-            z = out[k:k + 1]
-            # for i in range(len(z)):
-            #     for j in range(len(z[i])):
-            #         weight = token_dicts[k - 1][j][0].weight
-            #         z[i][j] = (z[i][j] - z_empty[0][j]) * weight + z_empty[0][j]
-            output.append(z)
-
-        if (len(output) == 0):
-            return z_empty.cpu(), first_pooled.cpu()
-        return torch.cat(output, dim=-2).cpu(), first_pooled.cpu()
-
-class PromptLangSD1ClipModel(SD1ClipModel):
-    def __init__(self, device="cpu", dtype=None, clip_name="l", clip_model=PromptLangSDClipModel):
-        super().__init__()
-        self.clip_name = clip_name
-        self.clip = "clip_{}".format(self.clip_name)
-        setattr(self, self.clip, clip_model(device=device, dtype=dtype))
+    return torch.cat(per_batch_embeds, dim=0), per_batch_modifiers
 
 
-class PromptLangSDXLClipModel(SDXLClipModel):
-    def __init__(self, device="cpu", dtype=None) -> None:
-        # Skip SDXLClipModel's init
-        super(SDXLClipModel, self).__init__()
-        self.clip_l = PromptLangSDClipModel(layer="hidden", layer_idx=11, device=device, dtype=dtype)
-        self.clip_l.layer_norm_hidden_state = False
-        self.clip_g = PromptLangSDXLClipG(device, dtype)
+def _build_attention_mask(
+    batches: List[List[SegOrAction]],
+    device,
+    end_token,
+) -> Tuple[Tensor, List[int]]:
+    """Build a 1-where-real, 0-where-padded mask plus a per-batch real-token count.
 
-class PromptLangSDXLClipG(PromptLangSDClipModel):
-    def __init__(self, device="cpu", max_length=77, freeze=True, layer="penultimate", layer_idx=None, textmodel_path=None, dtype=None):
-        if layer == "penultimate":
-            layer="hidden"
-            layer_idx=-2
+    EOS is detected by scanning `PromptSegment` integer tokens; action-produced tokens
+    are always treated as real content (they never contain the EOS marker).
+    """
+    masks = []
+    num_tokens = []
 
-        textmodel_json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_config_bigg.json")
-        super().__init__(device=device, freeze=freeze, layer=layer, layer_idx=layer_idx, textmodel_json_config=textmodel_json_config, textmodel_path=textmodel_path, dtype=dtype)
-        self.empty_tokens = [[49406] + [49407] + [0] * 75]
-        self.layer_norm_hidden_state = False
+    for batch in batches:
+        mask: List[int] = []
+        eos_seen = False
+        for seg_or_action in batch:
+            if isinstance(seg_or_action, Action):
+                # All action-produced tokens are real content (no EOS inside).
+                mask.extend([0] * seg_or_action.token_length() if eos_seen else [1] * seg_or_action.token_length())
+                continue
+            for tok in seg_or_action.tokens:
+                if eos_seen:
+                    mask.append(0)
+                    continue
+                mask.append(1)
+                if end_token is not None and isinstance(tok, int) and tok == end_token:
+                    eos_seen = True
+        masks.append(mask)
+        num_tokens.append(sum(mask))
 
-    def load_sd(self, sd):
-        return super().load_sd(sd)
+    return torch.tensor(masks, device=device, dtype=torch.long), num_tokens
+
+
+def _apply_pos_modifiers(
+    embeds: Tensor,
+    pos_modifiers_per_batch: List[List[PostModifiers]],
+    position_embedding: Embedding,
+) -> Tensor:
+    """Pre-bake position-modifier deltas into `embeds` so the transformer's inline add yields the modified pos embedding.
+
+    `comfy.clip_model.CLIPTextModel_.forward` does `x = embeds + position_embedding.weight[:seq]`
+    whenever `embeds` is passed in. To end up with a *modified* position embedding for a slice,
+    we add `(modified - default)` here so the transformer's add-back (`+ default`) nets to
+    `+ modified`. Not an assignment — `embeds` already carries the token embeddings.
+    """
+    if not any(pos_modifiers_per_batch):
+        return embeds
+
+    seq_len = embeds.shape[1]
+    pos_weights = position_embedding.weight[:seq_len].to(device=embeds.device, dtype=embeds.dtype)
+
+    out = embeds.clone()
+    for batch_idx, modifiers in enumerate(pos_modifiers_per_batch):
+        for mod in modifiers:
+            default_slice = pos_weights[mod.start_idx:mod.end_idx]
+
+            if mod.bypass_pos_embed:
+                modified_slice = torch.zeros_like(default_slice)
+            elif mod.position_embed_scale is not None:
+                modified_slice = default_slice * float(mod.position_embed_scale)
+            else:
+                continue
+
+            out[batch_idx, mod.start_idx:mod.end_idx] += modified_slice - default_slice
+
+    return out
+
+
+class PromptLangSD1ClipModel(sd1_clip.SD1ClipModel):
+    """SD1.x wrapper using our DSL-aware single CLIP-L encoder."""
+
+    def __init__(self, device="cpu", dtype=None, model_options=None, **kwargs):
+        super().__init__(
+            device=device,
+            dtype=dtype,
+            model_options=model_options or {},
+            clip_name="l",
+            clip_model=PromptLangSDClipModel,
+            **kwargs,
+        )
+
+
+class PromptLangSDXLClipModel(sdxl_clip.SDXLClipModel):
+    """SDXL wrapper using our DSL-aware CLIP-L and CLIP-G encoders."""
+
+    def __init__(self, device="cpu", dtype=None, model_options=None) -> None:
+        torch.nn.Module.__init__(self)
+        opts = model_options or {}
+        self.clip_l = PromptLangSDClipModel(
+            layer="hidden",
+            layer_idx=-2,
+            device=device,
+            dtype=dtype,
+            layer_norm_hidden_state=False,
+            model_options=opts,
+        )
+        self.clip_g = PromptLangSDXLClipG(device=device, dtype=dtype, model_options=opts)
+        self.dtypes = {dtype} if dtype is not None else set()

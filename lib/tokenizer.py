@@ -1,88 +1,103 @@
-from typing import List, Dict
+"""DSL-aware tokenizers.
+
+Override `tokenize_with_weights` to return our `List[List[SegOrAction]]` instead of
+the standard `[(token_id, weight), ...]` shape. The downstream `PromptLangSDClipModel`
+knows how to consume this.
+"""
+
+from typing import Dict, List
 
 from lark import Tree
 
 from comfy.sd1_clip import SD1Tokenizer, SDTokenizer
-from custom_nodes.KepPromptLang.lib.actions.types import SegOrAction
 
-from custom_nodes.KepPromptLang.lib.parser import PromptParser
-from custom_nodes.KepPromptLang.lib.parser.transformer import PromptTransformer
-from custom_nodes.KepPromptLang.lib.parser.prompt_segment import PromptSegment
+from .actions.types import SegOrAction
+from .parser import PromptParser
+from .parser.prompt_segment import PromptSegment
+from .parser.transformer import PromptTransformer
+
+# Side-effect import: registers all built-in actions with the parser.
+from . import actions  # noqa: F401
 
 
 class PromptLangSDTokenizer(SDTokenizer):
-    def __init__(self, tokenizer_path=None, max_length=77, pad_with_end=True, embedding_directory=None, embedding_size=768, embedding_key='clip_l'):
-        super().__init__(tokenizer_path, max_length, pad_with_end, embedding_directory, embedding_size, embedding_key)
-    """
-    Doesn't actually tokenize...
-    Returns batches of segments and actions
-    :return: List of list(batches) of segments and actions
-    """
-    def tokenize_with_weights(self, text:str, return_word_ids=False, **kwargs) -> List[List[SegOrAction]]:
-        if self.pad_with_end:
-            pad_token = self.end_token
-        else:
-            pad_token = 0
+    """Returns batches of segments/actions instead of (token, weight) pairs."""
+
+    def tokenize_with_weights(  # type: ignore[override]
+        self, text: str, return_word_ids: bool = False, **kwargs
+    ) -> List[List[SegOrAction]]:
+        pad_token = self.end_token if self.pad_with_end else 0
 
         parsed_prompt = PromptParser.parse(text)
-        parsed_actions = PromptTransformer(self).transform(parsed_prompt)
+        parsed = PromptTransformer(self).transform(parsed_prompt)
+        items = parsed.children if isinstance(parsed, Tree) else [parsed]
 
-        # reshape token array to CLIP input size
-        batched_segments = []
-        batch = [PromptSegment(text="[SOT]", tokens=[self.start_token])]
-        # batched_segments.append(batch)
-        batch_size = 1
-        if isinstance(parsed_actions, Tree):
-            segments_to_process = parsed_actions.children
-        else:
-            segments_to_process = [parsed_actions]
-        for segment in segments_to_process:
+        batches: List[List[SegOrAction]] = []
+        current: List[SegOrAction] = [PromptSegment(text="[SOT]", tokens=[self.start_token])]
+        current_size = 1
+
+        for segment in items:
             num_tokens = segment.token_length()
-            # determine if we're going to try and keep the tokens in a single batch
-            is_large = num_tokens >= self.max_word_length
 
-            # If the segment is too large to fit in a single batch, pad the current batch and start a new one
-            if num_tokens + batch_size > self.max_length - 1:
-                remaining_length = self.max_length - batch_size
-                # Pad batch
-                batch.append(PromptSegment("__PAD__", [self.end_token] + [pad_token] * (remaining_length - 1))) # -1 for end token
-                batched_segments.append(batch)
+            if num_tokens + current_size > self.max_length - 1:
+                remaining = self.max_length - current_size
+                current.append(_pad_segment(self.end_token, pad_token, remaining))
+                batches.append(current)
 
-                # start new batch
-                batch = [PromptSegment(text="[SOT]", tokens=[self.start_token]), segment]
-                batch_size = num_tokens + 1 # +1 for start token
-                continue
+                current = [PromptSegment(text="[SOT]", tokens=[self.start_token]), segment]
+                current_size = num_tokens + 1
+            else:
+                current.append(segment)
+                current_size += num_tokens
 
-            # Since the segment fits in the current batch, add it
-            batch.append(segment)
-            batch_size += num_tokens
+        remaining = self.max_length - current_size
+        current.append(_pad_segment(self.end_token, pad_token, remaining))
+        batches.append(current)
 
-        # Pad the last batch
-        remaining_length = self.max_length - batch_size - 1 # -1 for end token
-        batch.append(PromptSegment("__PAD__", [self.end_token] + [pad_token] * remaining_length))
-        batched_segments.append(batch)
+        return batches
 
-        # for batch in batched_segments:
-        #     batch_size_info(batch)
 
-        return batched_segments
+def _pad_segment(end_token: int, pad_token: int, remaining: int) -> PromptSegment:
+    """Build a trailing [EOT] + pad_token * (remaining-1) segment."""
+    return PromptSegment("__PAD__", [end_token] + [pad_token] * (remaining - 1))
+
 
 class PromptLangSD1Tokenizer(SD1Tokenizer):
-    def __init__(self, embedding_directory=None, clip_name='l', tokenizer=PromptLangSDTokenizer) -> None:
-        super().__init__(embedding_directory, clip_name, tokenizer)
+    def __init__(self, embedding_directory=None, tokenizer_data=None, clip_name="l", tokenizer=PromptLangSDTokenizer):
+        super().__init__(
+            embedding_directory=embedding_directory,
+            tokenizer_data=tokenizer_data or {},
+            clip_name=clip_name,
+            tokenizer=tokenizer,
+        )
 
 
 class PromptLangSDXLClipGTokenizer(PromptLangSDTokenizer):
-    def __init__(self, tokenizer_path=None, embedding_directory=None):
-        super().__init__(tokenizer_path, pad_with_end=False, embedding_directory=embedding_directory, embedding_size=1280, embedding_key='clip_g')
+    def __init__(self, tokenizer_path=None, embedding_directory=None, tokenizer_data=None):
+        super().__init__(
+            tokenizer_path=tokenizer_path,
+            pad_with_end=False,
+            embedding_directory=embedding_directory,
+            embedding_size=1280,
+            embedding_key="clip_g",
+            tokenizer_data=tokenizer_data or {},
+        )
 
-class PromptLangSDXLTokenizer(SD1Tokenizer):
-    def __init__(self, embedding_directory=None) -> None:
-        self.clip_l = PromptLangSDTokenizer(embedding_directory=embedding_directory)
-        self.clip_g = PromptLangSDXLClipGTokenizer(embedding_directory=embedding_directory)
 
-    def tokenize_with_weights(self, text:str, return_word_ids=False) -> Dict[str, List[List[SegOrAction]]]:
-        out = {}
-        out["g"] = self.clip_g.tokenize_with_weights(text, return_word_ids)
-        out["l"] = self.clip_l.tokenize_with_weights(text, return_word_ids)
-        return out
+class PromptLangSDXLTokenizer:
+    def __init__(self, embedding_directory=None, tokenizer_data=None) -> None:
+        td = tokenizer_data or {}
+        self.clip_l = PromptLangSDTokenizer(embedding_directory=embedding_directory, tokenizer_data=td)
+        self.clip_g = PromptLangSDXLClipGTokenizer(embedding_directory=embedding_directory, tokenizer_data=td)
+
+    def tokenize_with_weights(self, text: str, return_word_ids: bool = False, **kwargs) -> Dict[str, List[List[SegOrAction]]]:
+        return {
+            "g": self.clip_g.tokenize_with_weights(text, return_word_ids, **kwargs),
+            "l": self.clip_l.tokenize_with_weights(text, return_word_ids, **kwargs),
+        }
+
+    def untokenize(self, token_weight_pair):
+        return self.clip_g.untokenize(token_weight_pair)
+
+    def state_dict(self):
+        return {}

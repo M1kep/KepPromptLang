@@ -1,4 +1,4 @@
-grammar = """
+grammar = r"""
 ?start: item+
 
 item: embedding
@@ -13,7 +13,7 @@ arg: item+
 embedding: "embedding:" WORD
 FUNC_NAME: /[A-Za-z_-]+/
 WORD: /[A-Za-z0-9,_\.-]+/
-QUOTED_STRING: /"([^"\\\]*(\\\.[^"\\\]*)*)"|'([^'\\\]*(\\\.[^'\\\]*)*)'/
+QUOTED_STRING: /"([^"\\]*(\\.[^"\\]*)*)"|'([^'\\]*(\\.[^'\\]*)*)'/
 
 %import common.WS
 %ignore WS

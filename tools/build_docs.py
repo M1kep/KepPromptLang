@@ -1,83 +1,72 @@
+"""Regenerate the action table in README.md.
+
+Loads each action file by path so the docs can be regenerated without ComfyUI installed.
+"""
+
 import importlib
 import inspect
 import os
+import sys
+import types
 from typing import List, Type
 
-from custom_nodes.KepPromptLang.lib.action.base import Action
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ACTIONS_DIR = os.path.join(REPO_ROOT, "lib", "actions")
+EXCLUDED = {"__init__.py", "base.py", "types.py", "action_utils.py", "utils.py"}
 
 
-EXCLUDED_MODULES = ["utils.py", "action_utils.py", "types.py"]
-def import_module_from_path(path: str):
-    module_name = path.replace("/", ".")[:-3]
-    return importlib.import_module(module_name, package="custom_nodes.KepPromptLang.lib.actions")
+def _stub_runtime_deps():
+    """Stub modules whose only purpose is to satisfy the package's top-level imports."""
+    sys.path.insert(0, os.path.dirname(REPO_ROOT))
+
+    # Avoid pulling in ComfyUI's nodes.py during action discovery.
+    pkg_init = sys.modules.get("KepPromptLang")
+    if pkg_init is None:
+        pkg = types.ModuleType("KepPromptLang")
+        pkg.__path__ = [REPO_ROOT]
+        sys.modules["KepPromptLang"] = pkg
 
 
-# Function to find and import action classes
-def find_action_classes(directory: str) -> List[Type[Action]]:
-    action_classes = []
-    for filename in os.listdir(directory):
-        if filename.endswith(".py") and not filename.startswith("__") and filename not in EXCLUDED_MODULES:
-            module_path = os.path.join(directory, filename)
-            module = import_module_from_path(module_path)
-            for name, obj in inspect.getmembers(module, inspect.isclass):
-                if issubclass(obj, Action) and obj is not Action and obj.__name__ != "MultiArgAction" and obj.__name__ != "SingleArgAction":
-                    action_classes.append(obj)
-    return action_classes
+def find_action_classes() -> List[Type]:
+    _stub_runtime_deps()
+    base_class = importlib.import_module("KepPromptLang.lib.actions.base").Action
+
+    found: List[Type] = []
+    for filename in sorted(os.listdir(ACTIONS_DIR)):
+        if not filename.endswith(".py") or filename in EXCLUDED:
+            continue
+        mod = importlib.import_module(f"KepPromptLang.lib.actions.{filename[:-3]}")
+        for _, cls in inspect.getmembers(mod, inspect.isclass):
+            if (
+                issubclass(cls, base_class)
+                and cls is not base_class
+                and cls.__module__ == mod.__name__
+            ):
+                found.append(cls)
+    return found
 
 
-# Function to extract info from an action class
-def extract_class_info(cls: Type[Action]) -> dict:
-    class_info = {
-        'class_name': cls.__name__,
-        'properties': {
-            'display_name': getattr(cls, 'display_name', None),
-            'action_name': getattr(cls, 'action_name', None),
-            'description': getattr(cls, 'description', None),
-            'usage_examples': getattr(cls, 'usage_examples', None)
-        }
-    }
-    return class_info
-
-def escape_pipes(text: str) -> str:
-    return text.replace('|', '\\|')
-
-def generate_markdown_documentation(classes_info: List[dict]) -> str:
-    documentation = "# Actions Documentation\n\n"
-
-    # Define table columns
-    # columns = ["Class", "Display Name", "Action Name", "Description", "Usage Examples"]
-    columns = ["Display Name", "Action Name", "Description", "Usage Examples"]
-    documentation += "| " + " | ".join(columns) + " |\n"
-    documentation += "| --- " * len(columns) + "|\n"
-
-    for cls_info in classes_info:
-        # row = [cls_info['class_name']]
-        row = []
-        # Iterate over properties in a predefined order
-        for prop in ["display_name", "action_name", "description", "usage_examples"]:
-            prop_doc = cls_info['properties'].get(prop, 'N/A')
-
-            # Format and escape usage examples
-            if isinstance(prop_doc, list):
-                escaped_examples = [escape_pipes(example) for example in prop_doc]
-                prop_doc = "<ul>" + "".join([f"<li>{example}</li>" for example in escaped_examples]) + "</ul>"
-            else:
-                prop_doc = escape_pipes(prop_doc)
-
-            row.append(prop_doc)
-
-        documentation += "| " + " | ".join(row) + " |\n"
-
-    return documentation
-
-
-
-# Main execution
-if __name__ == "__main__":
-    actions_directory = (
-        "../lib/actions"  # Update this path as per your project structure
+def render_table(classes: List[Type]) -> str:
+    rows = []
+    for cls in sorted(classes, key=lambda c: c.action_name):
+        examples = "<ul>" + "".join(
+            f"<li>{ex.replace('|', chr(92) + '|')}</li>"
+            for ex in (cls.usage_examples or [])
+        ) + "</ul>"
+        cells = [
+            (cls.display_name or "").replace("|", "\\|"),
+            (cls.action_name or "").replace("|", "\\|"),
+            (cls.description or "").replace("|", "\\|"),
+            examples,
+        ]
+        rows.append("| " + " | ".join(cells) + " |")
+    return (
+        "| Display Name | Action Name | Description | Usage Examples |\n"
+        "| --- | --- | --- | --- |\n"
+        + "\n".join(rows)
+        + "\n"
     )
-    action_classes = find_action_classes(actions_directory)
-    class_infos = [extract_class_info(cls) for cls in action_classes]
-    docs = generate_markdown_documentation(class_infos)
-    print(docs)  # Or write to a file
+
+
+if __name__ == "__main__":
+    print(render_table(find_action_classes()))
