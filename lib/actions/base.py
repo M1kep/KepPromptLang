@@ -30,6 +30,11 @@ class PostModifiers:
 
 ActionResult = Union[Tensor, Tuple[Tensor, PostModifiers]]
 
+# Tokenizer placeholder for the 2nd..Nth slots of a multi-token Action, so each
+# row stays exactly max_length entries (required for comfy's per-position weight
+# indexing). process_tokens drops these; the Action's tensor fills the slots.
+ACTION_CONTINUATION = object()
+
 
 class Action(ABC):
     arity: ActionArity = ActionArity.NONE

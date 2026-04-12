@@ -10,6 +10,7 @@ import folder_paths
 from comfy.supported_models_base import ClipTarget
 
 from .lib.clip_model import PromptLangSD1ClipModel, PromptLangSDXLClipModel
+from .lib.inspect import inspect_prompt
 from .lib.tokenizer import PromptLangSD1Tokenizer, PromptLangSDXLTokenizer
 
 
@@ -43,6 +44,29 @@ class SpecialClipLoader:
         new_clip.layer_idx = source_clip.layer_idx
 
         return (new_clip,)
+
+
+class PromptLangInspect:
+    """Shows what a DSL prompt resolves to at the embedding layer: per-slot weight, L2 norm, nearest vocab."""
+
+    @classmethod
+    def INPUT_TYPES(cls):  # type: ignore[no-untyped-def]
+        return {
+            "required": {
+                "clip": ("CLIP",),
+                "text": ("STRING", {"multiline": True}),
+                "top_k": ("INT", {"default": 3, "min": 1, "max": 10}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "inspect"
+    CATEGORY = "conditioning"
+    OUTPUT_NODE = True
+
+    def inspect(self, clip, text: str, top_k: int):
+        report = inspect_prompt(clip, text, top_k=top_k)
+        return {"ui": {"text": [report]}, "result": (report,)}
 
 
 def tensor2img(tensor_img) -> Image.Image:

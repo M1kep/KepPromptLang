@@ -6,6 +6,7 @@ from torch.nn import Embedding
 
 from .base import Action
 from .types import SegOrAction
+from .weighted import WeightedGroup
 
 
 def embedding_tensor(seg_or_action: SegOrAction, embedding_module: Embedding) -> Tensor:
@@ -13,6 +14,9 @@ def embedding_tensor(seg_or_action: SegOrAction, embedding_module: Embedding) ->
     if isinstance(seg_or_action, Action):
         result = seg_or_action.get_result(embedding_module)
         return result[0] if isinstance(result, tuple) else result
+    if isinstance(seg_or_action, WeightedGroup):
+        # Weights apply post-transformer, not to embedding math; recurse and drop the weight.
+        return concat_embeddings(seg_or_action.items, embedding_module)
     return seg_or_action.get_embeddings(embedding_module)
 
 
@@ -51,8 +55,8 @@ def parse_numeric_arg(
     if len(arg) != 1:
         raise ValueError(f"{action_name} {role} should have exactly one segment")
     item = arg[0]
-    if isinstance(item, Action):
-        raise ValueError(f"{action_name} {role} cannot be an action")
+    if isinstance(item, (Action, WeightedGroup)):
+        raise ValueError(f"{action_name} {role} must be a plain numeric segment")
     try:
         return cast(item.text)
     except ValueError:

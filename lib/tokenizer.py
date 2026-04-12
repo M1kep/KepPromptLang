@@ -2,19 +2,23 @@
 
 Override `tokenize_with_weights` to parse our DSL and emit ComfyUI's native
 `List[List[(token, weight)]]` format, where `token` is an int id, an inline
-TI tensor, or a lazily-evaluated `Action` instance. The downstream
-`PromptLangSDClipModel.process_tokens` resolves Actions to tensors at encode
-time (when the embedding module is available) and otherwise defers to comfy's
-stock `process_tokens` for batching, masking, and embedding lookup.
+TI tensor, a lazily-evaluated `Action`, or `ACTION_CONTINUATION`.
+
+Row alignment matters: comfy's stock `encode_token_weights` indexes weights by
+post-transformer position, so each row must be exactly `max_length` entries.
+A multi-slot Action is therefore emitted as one `(action, w)` entry followed by
+`(ACTION_CONTINUATION, w)` placeholders; `process_tokens` drops the placeholders
+and the action's tensor expands to fill those slots.
 """
 
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Iterable, List, Tuple, Union
 
 from lark import Tree
 
 from comfy.sd1_clip import SD1Tokenizer, SDTokenizer
 
-from .actions.base import Action
+from .actions.base import ACTION_CONTINUATION, Action
+from .actions.weighted import WeightedGroup
 from .parser import PromptParser
 from .parser.prompt_segment import PromptSegment
 from .parser.transformer import PromptTransformer
@@ -23,6 +27,22 @@ from .parser.transformer import PromptTransformer
 from . import actions  # noqa: F401
 
 TokenEntry = Tuple[Union[int, "Action", object], float]
+
+
+def _flatten(item, weight: float) -> Iterable[TokenEntry]:
+    """Walk the parsed item tree, yielding one (token, weight) entry per output slot."""
+    if isinstance(item, WeightedGroup):
+        for sub in item.items:
+            yield from _flatten(sub, weight * item.weight)
+    elif isinstance(item, Action):
+        yield (item, weight)
+        for _ in range(item.token_length() - 1):
+            yield (ACTION_CONTINUATION, weight)
+    elif isinstance(item, PromptSegment):
+        for tok in item.tokens:
+            yield (tok, weight)
+    else:
+        raise TypeError(f"Unexpected parse item {item!r} ({type(item).__name__})")
 
 
 class PromptLangSDTokenizer(SDTokenizer):
@@ -41,31 +61,20 @@ class PromptLangSDTokenizer(SDTokenizer):
 
         batches: List[List[TokenEntry]] = []
         current: List[TokenEntry] = [(self.start_token, 1.0)]
-        # Tracks how many *post-splice* slots `current` will occupy: int/tensor
-        # entries count as 1, Action entries count as `token_length()`. The row
-        # itself is shorter — `process_tokens` expands actions to fill the gap.
-        used = 1
 
-        def close(row: List[TokenEntry], used_slots: int) -> None:
+        def close(row: List[TokenEntry]) -> None:
             row.append((self.end_token, 1.0))
-            row.extend([(pad_token, 1.0)] * (self.max_length - used_slots - 1))
+            row.extend([(pad_token, 1.0)] * (self.max_length - len(row)))
             batches.append(row)
 
         for item in items:
-            length = item.token_length()
-            if used + length > self.max_length - 1:
-                close(current, used)
+            entries = list(_flatten(item, 1.0))
+            if len(current) + len(entries) > self.max_length - 1:
+                close(current)
                 current = [(self.start_token, 1.0)]
-                used = 1
+            current.extend(entries)
 
-            if isinstance(item, Action):
-                current.append((item, 1.0))
-            else:
-                assert isinstance(item, PromptSegment)
-                current.extend((tok, 1.0) for tok in item.tokens)
-            used += length
-
-        close(current, used)
+        close(current)
         return batches
 
 

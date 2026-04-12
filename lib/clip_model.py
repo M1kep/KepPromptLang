@@ -21,7 +21,7 @@ from torch.nn import Embedding
 
 from comfy import sd1_clip, sdxl_clip
 
-from .actions.base import Action, PostModifiers
+from .actions.base import ACTION_CONTINUATION, Action, PostModifiers
 
 
 class PromptLangSDClipModel(sd1_clip.SDClipModel):
@@ -36,6 +36,9 @@ class PromptLangSDClipModel(sd1_clip.SDClipModel):
             modifiers: List[PostModifiers] = []
             position = 0
             for entry in batch:
+                if entry is ACTION_CONTINUATION:
+                    # Slot already accounted for by the preceding Action's `position += length`.
+                    continue
                 if isinstance(entry, Action):
                     length = entry.token_length()
                     result = entry.get_result(embedding_module)

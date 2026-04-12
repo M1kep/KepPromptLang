@@ -24,6 +24,8 @@ pip install -r KepPromptLang/requirements.txt
 2. Pass the wrapped CLIP into a standard **CLIP Text Encode** node.
 3. Use the DSL syntax in your prompt.
 
+To debug what your DSL is doing, add a **PromptLang Inspect** node — it shows the per-slot weight, L2 norm, and nearest-vocab words for the resolved embeddings.
+
 See `examples/WIP_Example_workflow.json` for a working workflow.
 
 ![Example](assets/first_example.png)
@@ -34,6 +36,7 @@ See `examples/WIP_Example_workflow.json` for a working workflow.
 | --- | --- | --- |
 | Plain word | alphanumeric (with `,_.-`) | `cat`, `dog_face` |
 | Quoted string | single or double quotes | `"hello world"`, `'it\'s sunny'` |
+| Weighted | `(text:weight)` or `emph(text\|weight)` | `(cat:1.3)`, `emph(cat\|1.3)` |
 | Embedding (textual inversion) | `embedding:NAME` | `embedding:face_vector` |
 | Function | `name(arg \| arg \| ...)` | `sum(king \| woman)` |
 
