@@ -6,8 +6,6 @@ from typing import List, Optional, Tuple, Union
 from torch import Tensor
 from torch.nn import Embedding
 
-from ..parser.prompt_segment import PromptSegment
-
 
 class ActionArity(Enum):
     NONE = 0
@@ -57,7 +55,7 @@ class Action(ABC):
 class SingleArgAction(Action, ABC):
     arity = ActionArity.SINGLE
 
-    def __init__(self, arg: List[Union[PromptSegment, "Action"]]):
+    def __init__(self, arg: List):
         self.arg = arg
 
     def __repr__(self) -> str:
@@ -67,7 +65,7 @@ class SingleArgAction(Action, ABC):
 class MultiArgAction(Action, ABC):
     arity = ActionArity.MULTI
 
-    def __init__(self, args: List[List[Union[PromptSegment, "Action"]]]):
+    def __init__(self, args: List[List]):
         self.all_args = args
 
     def __repr__(self) -> str:
