@@ -4,23 +4,16 @@ import torch
 from torch import Tensor
 from torch.nn import Embedding
 
-from .base import Action, ActionResult
+from .base import Action
 from .types import SegOrAction
 
 
-def get_embedding(seg_or_action: SegOrAction, embedding_module: Embedding) -> ActionResult:
-    """Embeddings for a segment, or get_result() for an action (may include post-modifiers)."""
-    if isinstance(seg_or_action, Action):
-        return seg_or_action.get_result(embedding_module)
-    return seg_or_action.get_embeddings(embedding_module)
-
-
 def embedding_tensor(seg_or_action: SegOrAction, embedding_module: Embedding) -> Tensor:
-    """Like get_embedding but always returns a bare tensor, dropping any post-modifiers."""
-    result = get_embedding(seg_or_action, embedding_module)
-    if isinstance(result, tuple):
-        return result[0]
-    return result
+    """Embeddings for a segment, or get_result() for an action — always a bare tensor."""
+    if isinstance(seg_or_action, Action):
+        result = seg_or_action.get_result(embedding_module)
+        return result[0] if isinstance(result, tuple) else result
+    return seg_or_action.get_embeddings(embedding_module)
 
 
 def get_total_length(args: List[SegOrAction]) -> int:

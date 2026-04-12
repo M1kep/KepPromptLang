@@ -39,18 +39,8 @@ class SpecialClipLoader:
             target = ClipTarget(PromptLangSD1Tokenizer, PromptLangSD1ClipModel)
 
         new_clip = comfy.sd.CLIP(target=target, embedding_directory=embedding_directory)
-
-        if is_sdxl:
-            new_clip.cond_stage_model.clip_l.transformer.load_state_dict(
-                source_clip.cond_stage_model.clip_l.transformer.state_dict()
-            )
-            new_clip.cond_stage_model.clip_g.transformer.load_state_dict(
-                source_clip.cond_stage_model.clip_g.transformer.state_dict()
-            )
-        else:
-            new_clip.cond_stage_model.clip_l.transformer.load_state_dict(
-                source_clip.cond_stage_model.clip_l.transformer.state_dict()
-            )
+        new_clip.cond_stage_model.load_state_dict(source_clip.cond_stage_model.state_dict())
+        new_clip.layer_idx = source_clip.layer_idx
 
         return (new_clip,)
 

@@ -70,7 +70,7 @@ Regenerate the table with `python tools/build_docs.py`.
 Tests are pytest-based and don't require ComfyUI:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 python -m pytest
 ```
 
