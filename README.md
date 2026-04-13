@@ -42,6 +42,15 @@ See `examples/WIP_Example_workflow.json` for a working workflow.
 
 Arguments inside a function are separated by `|`. Each arg can itself be plain text, an embedding, a quoted string, or another function call.
 
+### Variables and comments
+
+```
+$axis = diff(king|queen);   # name an expression
+sum(actor|$axis) and reject(doctor|$axis)
+```
+
+`$NAME = arg;` binds a name; `$NAME` substitutes it. Single-pass: define before use, no reassignment. `#` comments run to end of line. Substitution is structural — multiple refs share the same parsed action object, but actions are evaluated per occurrence (so `$r = rand(3); $r $r` re-rolls each use).
+
 ## Quick examples
 
 - Average two prompts: `avg(The cat is | The dog is | 0.5)`

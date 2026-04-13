@@ -18,6 +18,22 @@ class PromptTransformer(Transformer):
     def __init__(self, tokenizer: SDTokenizer):
         super().__init__()
         self.tokenizer = tokenizer
+        self.vars: dict = {}
+
+    def assign(self, items):
+        name = str(items[0])
+        if name in self.vars:
+            raise ValueError(f"Variable ${name} is already defined")
+        self.vars[name] = items[1]
+        return None
+
+    def ref(self, items):
+        name = str(items[0])
+        if name not in self.vars:
+            raise ValueError(f"Variable ${name} referenced before assignment")
+        # Weight 1.0 makes the group transparent: _flatten and embedding_tensor
+        # already recurse through WeightedGroup, so no new container type needed.
+        return WeightedGroup(self.vars[name], weight=1.0)
 
     def item(self, items: List[Token]):
         for item in items:

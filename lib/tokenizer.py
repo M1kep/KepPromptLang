@@ -58,6 +58,8 @@ class PromptLangSDTokenizer(SDTokenizer):
 
         parsed = PromptTransformer(self).transform(tree)
         items = parsed.children if isinstance(parsed, Tree) else [parsed]
+        # assign stmts return None (they only populate the transformer's var table).
+        items = [i for i in items if i is not None]
 
         batches: List[List[TokenEntry]] = []
         current: List[TokenEntry] = [(self.start_token, 1.0)]
